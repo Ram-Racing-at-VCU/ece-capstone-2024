@@ -1,10 +1,10 @@
-* \\wsl.localhost\Ubuntu\home\caleb\capstone\spice\SimpleSim.asc
-V1 N001 0 PULSE(0 5 0 0.000000001 0.000000001 0.0005 0.001 0)
+* C:\Users\caleb\Documents\capstonewindows\SimpleSim.asc
+V1 N001 0 PULSE(0 5 0 1n 1n 0.5m 1m 0)
 R1 N001 0 1k
-M1 N002 N001 N003 N003 BSP89
-M2 N003 N004 0 0 BSP89
+M1 N002 N001 Out Out BSP89
+M2 Out N003 0 0 BSP89
 V2 N002 0 10 Rser=1000
-A1 N001 0 0 0 0 N004 0 0 BUF
+A1 N001 0 0 0 0 N003 0 0 BUF
 .model NMOS NMOS
 .model PMOS PMOS
 .lib C:\Users\caleb\AppData\Local\LTspice\lib\cmp\standard.mos
