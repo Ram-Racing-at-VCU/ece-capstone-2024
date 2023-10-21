@@ -31,6 +31,8 @@ def magnitude(f, R, L):
 # given parameters and frequency range.
 
     M = []
+    if type(f) == int:
+        return (R/(sqrt(R**2 + (2*pi*f)**2 * L**2)))
     for freq in f:
         M.append(R/(sqrt(R**2 + (2*pi*freq)**2 * L**2)))
     return M
@@ -42,8 +44,9 @@ def phi(f, R, L):
 # Description: Generates the phase spectra of an RL lowpass filter for
 # given parameters and frequency range. (In degrees!!)
     phi = []
+    if type(f) == int:
+        return 180/pi*atan(2*pi*f*L/R)
     for freq in f:
-        # 
         phi.append(180/pi*atan(2*pi*freq*L/R)) # converting to degrees here
     return phi
 
@@ -59,7 +62,7 @@ f_m = 50
 dt = 1e-6
 
 t = arange(0, T0, dt)
-
+print(len(t))
 carrier_signal = 1/2 * signal.sawtooth(2*pi*f_c*t, width=1) + 1/2 # adding 1/2 to go from 1 to 0
 """
 Width of the rising ramp as a proportion of the total cycle.
@@ -77,20 +80,20 @@ for time in t:
        spwm_signal.append(0)
    count += 1
 
-# plt.figure()
-# plt.plot(1000*t, carrier_signal)
-# plt.plot(1000*t, message_signal)
+plt.figure()
+plt.plot(1000*t, carrier_signal)
+plt.plot(1000*t, message_signal)
 
-# plt.title("The Carrier and Message Signals vs. Time (ms)")
-# plt.xlabel("Time (ms)")
-# plt.legend(["Carrier Signal", "Message Signal"])
+plt.title("The Carrier and Message Signals vs. Time (ms)")
+plt.xlabel("Time (ms)")
+plt.legend(["Carrier Signal", "Message Signal"])
 
-# plt.figure()
+plt.figure()
 
-# plt.title("The SPWM Signal vs. Time (ms)")
-# plt.plot(1000*t, spwm_signal)
-# plt.xlabel("Time (ms)")
-# plt.legend(["SPWM Signal"])
+plt.title("The SPWM Signal vs. Time (ms)")
+plt.plot(1000*t, spwm_signal)
+plt.xlabel("Time (ms)")
+plt.legend(["SPWM Signal"])
 
 # plt.show()
 
@@ -98,35 +101,36 @@ for time in t:
 #             PART 2                #
 #***********************************#
 
-# dc_component = 1/T0 * integral(spwm_signal, dt)
-# coeffRange = 1000
-# harmRange = 100
-# coeff = []
+dc_component = 1/T0 * integral(spwm_signal, dt)
+coeffRange = 1000
+harmRange = 100
+coeff = []
 
-# for n in range(1,coeffRange+1):
-#     res_list = [spwm_signal[i]* cos(2*pi*f_m*n*t[i]) for i in range(len(spwm_signal))]
-#     coeff.append(2/T0 * integral(res_list, dt))
+for n in range(1,coeffRange):
+    res_list = [spwm_signal[i]* cos(2*pi*f_m*n*t[i]) for i in range(len(spwm_signal))]
+    test = integral(res_list, dt)
+    coeff.append(2/T0 * test)
+print(test)
+harmonic_100 = []
+harmonic_100.append(dc_component)
 
-# harmonic_100 = []
-# harmonic_100[0] = dc_component
+for n in range(1, harmRange+1):
+    harmonic_100.append(coeff[n]*cos(2*pi*n*f_m*t[n]))
+plt.figure()
+plt.plot(1000*t, spwm_signal)
+plt.title("SPWM Signal vs. Time (ms)")
 
-# for n in range(1, harmRange+1):
-#     harmonic_100.append(coeff[n]*cos(2*pi*n*f_m*t[n]))
+print(len(spwm_signal))
+plt.figure()
+pltResult = []
+for time in t:
+    pltResult.append(coeff[1]*cos(2*pi*f_m*time) + dc_component)
+plt.plot(1000*t, pltResult)
+plt.title("First Coefficient vs. Time (ms)")
 
-# plt.figure()
-# plt.plot(1000*t, spwm_signal)
-# plt.title("SPWM Signal vs. Time (ms)")
-
-# plt.figure()
-# pltResult = []
-# for time in t:
-#     pltResult.append(coeff[1]*cos(2*pi*f_m*time) + dc_component)
-# plt.plot(1000*t, pltResult)
-# plt.title("First Coefficient vs. Time (ms)")
-
-# plt.figure()
-# plt.plot(1000*t, harmonic_100)
-# plt.title("The First 100 Harmonics vs. Time")
+plt.figure()
+plt.plot(harmonic_100)
+plt.title("The First 100 Harmonics vs. Time")
 
 # plt.show()
 
@@ -135,25 +139,23 @@ for time in t:
 #             PART 3                #
 #***********************************#
 
-R = 0.5 # Ohms
-L = 0.0005 # Henries
+# R = 0.5 # Ohms
+# L = 0.0005 # Henries
 
-f = np.linspace(0,1000)
+# f = np.linspace(0,1000)
 
-M = magnitude(f, R, L)
-P = phi(f, R, L)
+# M = magnitude(f, R, L)
+# P = phi(f, R, L)
 
-print(M)
+# plt.figure()
+# plt.plot(f, M)
+# plt.legend(["Magnitude"])
+# # plt.show()
 
-plt.figure()
-plt.plot(f, M)
-plt.legend(["Magnitude"])
-plt.show()
-
-plt.figure()
-plt.plot(f, P)
-plt.legend(["Phase (deg)"])
-plt.show()
+# plt.figure()
+# plt.plot(f, P)
+# plt.legend(["Phase (deg)"])
+# # plt.show()
 
 
 
@@ -162,4 +164,13 @@ plt.show()
 #             PART 4                #
 #***********************************#
 
-out_sig_1 = [0]
+# out_sig_1 = [0]
+# print(len(coeff))
+# count = 1
+# for n in range(1,coeffRange):
+#     out_sig_1.append(out_sig_1[n-1] + magnitude(n*f_m, R, L)*coeff[n]*cos(2*pi*n*f_m*t[n] + phi(n*f_m, R, L)))
+# print("here")
+
+# plt.figure()
+# plt.plot(out_sig_1)
+# plt.show()
