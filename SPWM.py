@@ -1,9 +1,13 @@
-from math import sqrt
-from math import pi
-from math import atan
-from math import cos
+# from math import sqrt
+# from math import pi
+# from math import atan
+# from math import cos
 
 import numpy as np
+from numpy import sqrt as sqrt
+from numpy import pi as pi
+from numpy import arctan as atan
+from numpy import cos as cos
 from numpy import arange
 
 import matplotlib.pyplot as plt
@@ -20,7 +24,6 @@ def integral(x, dt):
     I = 0
     for item in x:
         I = I + item*dt
-
     return I
 
 def magnitude(f, R, L):
@@ -45,9 +48,9 @@ def phi(f, R, L):
 # given parameters and frequency range. (In degrees!!)
     phi = []
     if type(f) == int:
-        return 180/pi*atan(2*pi*f*L/R)
+        return atan(2*pi*f*L/R)
     for freq in f:
-        phi.append(180/pi*atan(2*pi*freq*L/R)) # converting to degrees here
+        phi.append(atan(2*pi*freq*L/R)) # converting to degrees here
     return phi
 
 
@@ -62,23 +65,16 @@ f_m = 50
 dt = 1e-6
 
 t = arange(0, T0, dt)
-print(len(t))
-carrier_signal = 1/2 * signal.sawtooth(2*pi*f_c*t, width=1) + 1/2 # adding 1/2 to go from 1 to 0
+carrier_signal = 1/2 * signal.sawtooth(2*pi*f_c*t, width=0.5) + 1/2 # adding 1/2 to go from 1 to 0
 """
 Width of the rising ramp as a proportion of the total cycle.
 Default is 1, producing a rising ramp, while 0 produces a falling
 ramp.  `width` = 0.5 produces a triangle wave.
 """
-message_signal = []
-spwm_signal = []
-count = 0
-for time in t:
-   message_signal.append(0.99/2 * cos(2*pi*f_m*time) + 0.99/2)
-   if(message_signal[count] >= carrier_signal[count]):
-       spwm_signal.append(1)
-   else:
-       spwm_signal.append(0)
-   count += 1
+message_signal = 0.99/2 * cos(2*pi*f_m*t) + 0.99/2
+
+# spwm_signal = np.empty(len(t))
+spwm_signal = message_signal >= carrier_signal
 
 plt.figure()
 plt.plot(1000*t, carrier_signal)
@@ -106,21 +102,29 @@ coeffRange = 1000
 harmRange = 100
 coeff = []
 
-for n in range(1,coeffRange):
-    res_list = [spwm_signal[i]* cos(2*pi*f_m*n*t[i]) for i in range(len(spwm_signal))]
+for n in range(0, coeffRange):
+    res_list = spwm_signal * cos(2*pi*f_m*n*t)
     test = integral(res_list, dt)
     coeff.append(2/T0 * test)
-print(test)
-harmonic_100 = []
-harmonic_100.append(dc_component)
+harmonics = np.array(dc_component)
 
-for n in range(1, harmRange+1):
-    harmonic_100.append(coeff[n]*cos(2*pi*n*f_m*t[n]))
+
+# Calculating and plotting the first 100 harmonics
+for n in range(1, harmRange):
+    harmonics =  harmonics + coeff[n] * cos(2*pi*n*f_m*t)
 plt.figure()
-plt.plot(1000*t, spwm_signal)
-plt.title("SPWM Signal vs. Time (ms)")
+plt.plot(1000*t, harmonics)
+plt.title("The First 100 Harmonics vs. Time")
 
-print(len(spwm_signal))
+harmRange = 1000
+harmonics = np.array(dc_component)
+# Calculating and plotting the first 1000 harmonics
+for n in range(1, harmRange):
+    harmonics =  harmonics + coeff[n] * cos(2*pi*n*f_m*t)
+plt.figure()
+plt.plot(1000*t, harmonics)
+plt.title("The First 1000 Harmonics vs. Time")
+
 plt.figure()
 pltResult = []
 for time in t:
@@ -128,19 +132,13 @@ for time in t:
 plt.plot(1000*t, pltResult)
 plt.title("First Coefficient vs. Time (ms)")
 
-plt.figure()
-plt.plot(harmonic_100)
-plt.title("The First 100 Harmonics vs. Time")
-
-# plt.show()
-
 
 #***********************************#
 #             PART 3                #
 #***********************************#
 
-# R = 0.5 # Ohms
-# L = 0.0005 # Henries
+R = 0.5 # Ohms
+L = 0.0005 # Henries
 
 # f = np.linspace(0,1000)
 
@@ -150,12 +148,12 @@ plt.title("The First 100 Harmonics vs. Time")
 # plt.figure()
 # plt.plot(f, M)
 # plt.legend(["Magnitude"])
-# # plt.show()
+# plt.show()
 
 # plt.figure()
-# plt.plot(f, P)
+# plt.plot(f, 180/pi*P)
 # plt.legend(["Phase (deg)"])
-# # plt.show()
+# plt.show()
 
 
 
@@ -164,13 +162,22 @@ plt.title("The First 100 Harmonics vs. Time")
 #             PART 4                #
 #***********************************#
 
-# out_sig_1 = [0]
-# print(len(coeff))
-# count = 1
-# for n in range(1,coeffRange):
-#     out_sig_1.append(out_sig_1[n-1] + magnitude(n*f_m, R, L)*coeff[n]*cos(2*pi*n*f_m*t[n] + phi(n*f_m, R, L)))
-# print("here")
+out_sig_1 = 0
+print(len(coeff))
+for n in range(0,coeffRange):
+    out_sig_1 = out_sig_1 + magnitude(n*f_m, R, L)*coeff[n]*cos(2*pi*n*f_m*t + phi(n*f_m, R, L))
 
-# plt.figure()
-# plt.plot(out_sig_1)
-# plt.show()
+plt.figure()
+plt.plot(1000*t, out_sig_1)
+plt.title("Output simulation with R = 0.5 \Omega and L = 0.5 mH")
+
+L = 0.00005
+out_sig_2 = 0
+print(len(coeff))
+for n in range(0,coeffRange):
+    out_sig_2 = out_sig_2 + magnitude(n*f_m, R, L)*coeff[n]*cos(2*pi*n*f_m*t + phi(n*f_m, R, L))
+
+plt.figure()
+plt.plot(1000*t, out_sig_2)
+plt.title("Output simulation with R = 0.5 \Omega and L = 0.05 mH")
+plt.show()

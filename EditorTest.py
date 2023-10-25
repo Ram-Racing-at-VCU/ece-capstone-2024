@@ -60,12 +60,12 @@ for index in range(1,16):
     plt.xlabel("Time (s)")
     plt.ylabel(f"Voltage (V) at {currNode}")
 
-LTC.file_cleanup()   
+   
 voltRangeList = [*voltRange]
 plt.legend(voltRangeList)
 plt.title(f"Voltage Output at {currNode} (V) vs. Time (s)")
 plt.grid()
 plt.show()
-
+LTC.file_cleanup()
 
 exit(0)
