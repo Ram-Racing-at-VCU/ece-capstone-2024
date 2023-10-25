@@ -46,11 +46,14 @@ def phi(f, R, L):
 # Output: RL circuit phase (phi)
 # Description: Generates the phase spectra of an RL lowpass filter for
 # given parameters and frequency range. (In degrees!!)
-    phi = []
+    
+    count = 0
     if type(f) == int:
         return atan(2*pi*f*L/R)
+    phi = np.empty(len(f))
     for freq in f:
-        phi.append(atan(2*pi*freq*L/R)) # converting to degrees here
+        phi[count] = (atan(2*pi*freq*L/R)) # converting to degrees here
+        count += 1
     return phi
 
 
@@ -60,7 +63,7 @@ def phi(f, R, L):
 #***********************************#
 
 T0 = 0.02
-f_c = 5000
+f_c = 2500
 f_m = 50
 dt = 1e-6
 
@@ -73,7 +76,6 @@ ramp.  `width` = 0.5 produces a triangle wave.
 """
 message_signal = 0.99/2 * cos(2*pi*f_m*t) + 0.99/2
 
-# spwm_signal = np.empty(len(t))
 spwm_signal = message_signal >= carrier_signal
 
 plt.figure()
@@ -91,7 +93,6 @@ plt.plot(1000*t, spwm_signal)
 plt.xlabel("Time (ms)")
 plt.legend(["SPWM Signal"])
 
-# plt.show()
 
 #***********************************#
 #             PART 2                #
@@ -112,38 +113,52 @@ harmonics = np.array(dc_component)
 # Calculating and plotting the first 100 harmonics
 for n in range(1, harmRange):
     harmonics =  harmonics + coeff[n] * cos(2*pi*n*f_m*t)
-plt.figure()
-plt.plot(1000*t, harmonics)
-plt.title("The First 100 Harmonics vs. Time")
 
 harmRange = 1000
-harmonics = np.array(dc_component)
+harmonics_1000 = np.array(dc_component)
 # Calculating and plotting the first 1000 harmonics
 for n in range(1, harmRange):
-    harmonics =  harmonics + coeff[n] * cos(2*pi*n*f_m*t)
-plt.figure()
-plt.plot(1000*t, harmonics)
-plt.title("The First 1000 Harmonics vs. Time")
+    harmonics_1000 =  harmonics_1000 + coeff[n] * cos(2*pi*n*f_m*t)
 
-plt.figure()
+
 pltResult = []
 for time in t:
     pltResult.append(coeff[1]*cos(2*pi*f_m*time) + dc_component)
-plt.plot(1000*t, pltResult)
-plt.title("First Coefficient vs. Time (ms)")
 
+fig, axs = plt.subplots(2, 2)
+
+axs[0, 0].plot(1000*t, spwm_signal, linewidth='0.5')
+axs[0, 0].set_title('SPWM Signal')
+axs[0, 1].plot(1000*t, pltResult, 'tab:orange', linewidth='0.5')
+axs[0, 1].set_title('First Coefficient')
+axs[1, 0].plot(1000*t, harmonics, 'tab:green', linewidth='0.5')
+axs[1, 0].set_title('The First 100 Harmonics')
+axs[1, 1].plot(1000*t, harmonics_1000, 'tab:red', linewidth='0.5')
+axs[1, 1].set_title('The First 1000 Harmonics')
 
 #***********************************#
 #             PART 3                #
 #***********************************#
 
-R = 0.5 # Ohms
-L = 0.0005 # Henries
+# R = 0.5 # Ohms
+# L = 0.0005 # Henries
 
-# f = np.linspace(0,1000)
+L = 5.73e-6
+R = 0.0932
 
-# M = magnitude(f, R, L)
-# P = phi(f, R, L)
+f = np.linspace(0,1000)
+
+M = magnitude(f, R, L)
+P = phi(f, R, L)
+
+fig, axs = plt.subplots(1, 2)
+
+fig.suptitle(f'Simulation with L = {L} H and R = {R} $\Omega$')
+
+axs[0].plot(f, M, linewidth='0.5')
+axs[0].set_title('Magnitude')
+axs[1].plot(f, 180/pi*P, 'tab:orange', linewidth='0.5')
+axs[1].set_title('Phase (deg)')
 
 # plt.figure()
 # plt.plot(f, M)
@@ -163,21 +178,20 @@ L = 0.0005 # Henries
 #***********************************#
 
 out_sig_1 = 0
-print(len(coeff))
 for n in range(0,coeffRange):
     out_sig_1 = out_sig_1 + magnitude(n*f_m, R, L)*coeff[n]*cos(2*pi*n*f_m*t + phi(n*f_m, R, L))
 
 plt.figure()
 plt.plot(1000*t, out_sig_1)
-plt.title("Output simulation with R = 0.5 \Omega and L = 0.5 mH")
+plt.title(f"Output simulation with R = {R} $\Omega$ and L = {L} H")
 
-L = 0.00005
-out_sig_2 = 0
-print(len(coeff))
-for n in range(0,coeffRange):
-    out_sig_2 = out_sig_2 + magnitude(n*f_m, R, L)*coeff[n]*cos(2*pi*n*f_m*t + phi(n*f_m, R, L))
+# L = 5.73e-6
+# R = 0.0932
+# out_sig_2 = 0
+# for n in range(0,coeffRange):
+#     out_sig_2 = out_sig_2 + magnitude(n*f_m, R, L)*coeff[n]*cos(2*pi*n*f_m*t + phi(n*f_m, R, L))
 
-plt.figure()
-plt.plot(1000*t, out_sig_2)
-plt.title("Output simulation with R = 0.5 \Omega and L = 0.05 mH")
+# plt.figure()
+# plt.plot(1000*t, out_sig_2)
+# plt.title(f"Output simulation with R = {R} $\Omega$ and L = {L} H")
 plt.show()
