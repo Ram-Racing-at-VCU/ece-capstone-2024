@@ -1,5 +1,5 @@
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-runner = "probe-run --chip STM32G431KB"
+runner = "probe-run --chip STM32G431KBTx"
 rustflags = [
     "-C",
     "linker=flip-link",
@@ -17,5 +17,5 @@ DEFMT_LOG = "debug"
 
 [alias]
 rb = "run --bin firmware"
-rbb = "run --release --bin firmware"
+rrb = "run --release --bin firmware"
 bbr = "build --release --bin firmware"
