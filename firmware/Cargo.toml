@@ -33,11 +33,12 @@ embassy-stm32 = { path = "../embassy/embassy-stm32", features = [
     "defmt",
     "nightly",
     "exti",
-    "time-driver-any",
+    "time-driver-tim2",
     "stm32g431kb",
     "memory-x",
     "chrono",
     "unstable-traits",
+    "unstable-pac",
 ] }
 
 embassy-embedded-hal = { path = "../embassy/embassy-embedded-hal", features = [
@@ -46,7 +47,8 @@ embassy-embedded-hal = { path = "../embassy/embassy-embedded-hal", features = [
 
 embassy-sync = { path = "../embassy/embassy-sync", features = ["nightly"] }
 
-embedded-hal = { version = "=1.0.0-rc.1" }
+embedded-hal-10 = { package = "embedded-hal", version = "=1.0.0-rc.1" }
+embedded-hal-02 = { package = "embedded-hal", version = "=0.2.7" }
 
 [profile.dev]
 codegen-units = 1
