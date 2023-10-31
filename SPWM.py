@@ -63,7 +63,7 @@ def phi(f, R, L):
 #***********************************#
 
 T0 = 0.02
-f_c = 2500
+f_c = 25e3
 f_m = 50
 dt = 1e-6
 
@@ -121,15 +121,17 @@ for n in range(1, harmRange):
     harmonics_1000 =  harmonics_1000 + coeff[n] * cos(2*pi*n*f_m*t)
 
 
-pltResult = []
+firstCoeff = np.empty(len(t))
+count = 0
 for time in t:
-    pltResult.append(coeff[1]*cos(2*pi*f_m*time) + dc_component)
+    firstCoeff[count] = (coeff[1]*cos(2*pi*f_m*time) + dc_component)
+    count += 1
 
 fig, axs = plt.subplots(2, 2)
 
 axs[0, 0].plot(1000*t, spwm_signal, linewidth='0.5')
 axs[0, 0].set_title('SPWM Signal')
-axs[0, 1].plot(1000*t, pltResult, 'tab:orange', linewidth='0.5')
+axs[0, 1].plot(1000*t, firstCoeff, 'tab:orange', linewidth='0.5')
 axs[0, 1].set_title('First Coefficient')
 axs[1, 0].plot(1000*t, harmonics, 'tab:green', linewidth='0.5')
 axs[1, 0].set_title('The First 100 Harmonics')
@@ -179,11 +181,17 @@ axs[1].set_title('Phase (deg)')
 
 out_sig_1 = 0
 for n in range(0,coeffRange):
-    out_sig_1 = out_sig_1 + magnitude(n*f_m, R, L)*coeff[n]*cos(2*pi*n*f_m*t + phi(n*f_m, R, L))
+    out_sig_1 = out_sig_1 + magnitude((n+1)*f_m, R, L)*coeff[n]*cos(2*pi*n*f_m*t + phi(n*f_m, R, L))
 
 plt.figure()
 plt.plot(1000*t, out_sig_1)
 plt.title(f"Output simulation with R = {R} $\Omega$ and L = {L} H")
+
+thing = 0
+for n in range(2, coeffRange):
+    thing += (magnitude(n*f_m, R, L)*coeff[n])**2
+thd = sqrt(thing)/coeff[1] * magnitude(f_m, R, L)
+print(thd)
 
 # L = 5.73e-6
 # R = 0.0932
@@ -194,4 +202,8 @@ plt.title(f"Output simulation with R = {R} $\Omega$ and L = {L} H")
 # plt.figure()
 # plt.plot(1000*t, out_sig_2)
 # plt.title(f"Output simulation with R = {R} $\Omega$ and L = {L} H")
+
+# plt.figure()
+# plt.plot(1000*t, thd)
+# plt.title("Total Harmonic Distortion vs. Time")
 plt.show()
