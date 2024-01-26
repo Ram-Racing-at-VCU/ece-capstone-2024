@@ -3,21 +3,31 @@
 #![feature(type_alias_impl_trait)]
 
 use defmt::info;
+use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
 use embassy_stm32::{
+    bind_interrupts,
     gpio::{Level, Output, OutputType, Speed},
-    interrupt, rcc, time,
+    rcc,
+    spi::{self, Spi},
+    time,
     timer::{
         complementary_pwm::{ComplementaryPwm, ComplementaryPwmPin},
         simple_pwm::PwmPin,
         Channel, CountingMode,
     },
+    usart::{self, UartRx},
     Config,
 };
+use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 use embassy_time::Timer;
 use embedded_hal_02::Pwm;
 
 use {defmt_rtt as _, panic_probe as _}; // logger & panic handler
+
+bind_interrupts!(struct Irqs {
+    USART2 => usart::InterruptHandler<embassy_stm32::peripherals::USART2>;
+});
 
 #[embassy_executor::main]
 async fn main(_s: Spawner) {
@@ -84,6 +94,22 @@ async fn main(_s: Spawner) {
     // servo.enable(Channel::Ch2);
 
     let mut led = Output::new(p.PB8, Level::Low, Speed::Low);
+
+    let mut spi_config = spi::Config::default();
+    spi_config.frequency = time::khz(100);
+    spi_config.mode = spi::MODE_1;
+
+    let spi = Spi::new(
+        p.SPI1, p.PB3, p.PB5, p.PB4, p.DMA1_CH1, p.DMA1_CH2, spi_config,
+    );
+
+    let spi: Mutex<NoopRawMutex, _> = Mutex::new(spi);
+
+    let spi_device = SpiDevice::new(&spi, Output::new(p.PA11, Level::Low, Speed::Low));
+
+    let mut uart_config = usart::Config::default();
+
+    let sbus = UartRx::new(p.USART2, Irqs, p.PA3, p.DMA1_CH3, uart_config);
 
     loop {
         led.toggle();
