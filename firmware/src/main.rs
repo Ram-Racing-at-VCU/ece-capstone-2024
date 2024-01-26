@@ -5,7 +5,7 @@
 use defmt::info;
 use embassy_executor::Spawner;
 use embassy_stm32::{
-    gpio::OutputType,
+    gpio::{Level, Output, OutputType, Speed},
     interrupt, rcc, time,
     timer::{
         complementary_pwm::{ComplementaryPwm, ComplementaryPwmPin},
@@ -14,6 +14,7 @@ use embassy_stm32::{
     },
     Config,
 };
+use embassy_time::Timer;
 use embedded_hal_02::Pwm;
 
 use {defmt_rtt as _, panic_probe as _}; // logger & panic handler
@@ -59,11 +60,6 @@ async fn main(_s: Spawner) {
         CountingMode::CenterAlignedBothInterrupts,
     );
 
-    // enable update interrupt
-    embassy_stm32::pac::TIM1.dier().modify(|dier| {
-        dier.set_uie(true);
-    });
-
     info!("PWM Initialized!");
 
     motor.set_duty(Channel::Ch1, 0);
@@ -87,7 +83,11 @@ async fn main(_s: Spawner) {
     // set_duty_cycle(&mut servo, duty_frac, Channel::Ch2);
     // servo.enable(Channel::Ch2);
 
+    let mut led = Output::new(p.PB8, Level::Low, Speed::Low);
+
     loop {
+        led.toggle();
+        Timer::after_millis(500).await;
         cortex_m::asm::wfi(); // sleep
     }
 }
@@ -105,10 +105,4 @@ where
     let duty = max / div;
 
     servo.set_duty(channel, duty);
-}
-
-#[interrupt]
-fn TIM1_UP_TIM16() {
-    // todo: fix receiving interrupts, generate next duty cycle value & update in real-time
-    info!("recieved interrupt");
 }
