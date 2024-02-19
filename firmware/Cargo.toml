@@ -1,0 +1,85 @@
+[package]
+name = "firmware"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "firmware"
+test = false
+bench = false
+
+[dependencies]
+cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
+cortex-m-rt = { version = "0.7" }
+
+defmt = { version = "0.3" }
+defmt-rtt = { version = "0.4" }
+panic-probe = { version = "0.3", features = ["print-rtt"] }
+
+embassy-executor = { path = "../embassy/embassy-executor", features = [
+    "defmt",
+    "nightly",
+    "integrated-timers",
+    "arch-cortex-m",
+    "executor-thread",
+] }
+
+embassy-time = { path = "../embassy/embassy-time", features = [
+    "defmt",
+    "nightly",
+] }
+
+embassy-stm32 = { path = "../embassy/embassy-stm32", features = [
+    "defmt",
+    "nightly",
+    "exti",
+    "time-driver-tim2",
+    "stm32g431kb",
+    "memory-x",
+    "chrono",
+    "unstable-traits",
+    "unstable-pac",
+] }
+
+embassy-embedded-hal = { path = "../embassy/embassy-embedded-hal", features = [
+    "nightly",
+] }
+
+embassy-sync = { path = "../embassy/embassy-sync", features = ["nightly"] }
+
+embedded-hal-10 = { package = "embedded-hal", version = "=1.0.0-rc.1" }
+embedded-hal-02 = { package = "embedded-hal", version = "=0.2.7" }
+
+[profile.dev]
+codegen-units = 1
+debug = 2
+debug-assertions = true
+incremental = false
+opt-level = "s"
+overflow-checks = true
+
+[profile.test]
+codegen-units = 1
+debug = 2
+debug-assertions = true
+incremental = false
+opt-level = "s"
+overflow-checks = true
+
+[profile.release]
+codegen-units = 1
+debug = 2
+debug-assertions = false
+incremental = false
+lto = "fat"
+opt-level = "s"
+overflow-checks = false
+
+[profile.bench]
+codegen-units = 1
+debug = 2
+debug-assertions = false
+incremental = false
+lto = "fat"
+opt-level = "s"
+overflow-checks = false
