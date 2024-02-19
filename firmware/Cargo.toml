@@ -25,31 +25,23 @@ embassy-executor = { path = "../embassy/embassy-executor", features = [
     "executor-thread",
 ] }
 
-embassy-time = { path = "../embassy/embassy-time", features = [
-    "defmt",
-    "nightly",
-] }
+embassy-time = { path = "../embassy/embassy-time", features = ["defmt"] }
 
 embassy-stm32 = { path = "../embassy/embassy-stm32", features = [
     "defmt",
-    "nightly",
     "exti",
     "time-driver-tim2",
     "stm32g431kb",
     "memory-x",
     "chrono",
-    "unstable-traits",
     "unstable-pac",
 ] }
 
-embassy-embedded-hal = { path = "../embassy/embassy-embedded-hal", features = [
-    "nightly",
-] }
+embassy-embedded-hal = { path = "../embassy/embassy-embedded-hal" }
 
-embassy-sync = { path = "../embassy/embassy-sync", features = ["nightly"] }
+embassy-sync = { path = "../embassy/embassy-sync" }
 
-embedded-hal-10 = { package = "embedded-hal", version = "=1.0.0-rc.1" }
-embedded-hal-02 = { package = "embedded-hal", version = "=0.2.7" }
+embedded-hal = { package = "embedded-hal", version = "=1.0.0" }
 
 [profile.dev]
 codegen-units = 1
