@@ -111,6 +111,10 @@ async fn main(_s: Spawner) {
 
     let sbus = UartRx::new(p.USART2, Irqs, p.PA3, p.DMA1_CH3, uart_config);
 
+    let driver_cal = Output::new(p.PB7, Level::Low, Speed::Low);
+
+    let driver_enable = Output::new(p.PB6, Level::High, Speed::Low);
+
     loop {
         led.toggle();
         Timer::after_millis(500).await;
