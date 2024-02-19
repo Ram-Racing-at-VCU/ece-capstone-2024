@@ -181,6 +181,10 @@ async fn main(_spawner: Spawner) {
 
     let sbus = UartRx::new(p.USART2, Irqs, p.PA3, p.DMA1_CH3, uart_config);
 
+    let driver_cal = Output::new(p.PB7, Level::Low, Speed::Low);
+
+    let driver_enable = Output::new(p.PB6, Level::High, Speed::Low);
+
     let adc = Output::new(p.PA2, Level::Low, Speed::Low);
 
     let gate_driver = Input::new(p.PB0, Pull::Up);
