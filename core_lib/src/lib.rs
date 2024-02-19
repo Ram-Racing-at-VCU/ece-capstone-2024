@@ -1,3 +1,5 @@
+#![no_std]
+
 // Change `extern crate` to use when using crates
 extern crate micromath as um; // no-std library for trig operations
 extern crate nalgebra as na; // no-std library for matrix arithmatic
