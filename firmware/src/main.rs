@@ -24,7 +24,6 @@ use embassy_stm32::{
 
 use embassy_sync::blocking_mutex::{raw::NoopRawMutex, Mutex};
 use embassy_time::{Instant, Timer};
-use micromath::F32Ext;
 
 // logger and panic handler
 use {defmt_rtt as _, panic_probe as _};
