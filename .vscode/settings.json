@@ -1,5 +1,22 @@
 {
   "editor.formatOnSave": true,
   "git.autofetch": true,
-  "rust-analyzer.check.command": "clippy"
+  "rust-analyzer.check.command": "clippy",
+  "cSpell.words": [
+    "consts",
+    "conv",
+    "defmt",
+    "divp",
+    "divq",
+    "divr",
+    "gpio",
+    "Irqs",
+    "micromath",
+    "nfault",
+    "Pllsrc",
+    "prediv",
+    "sbus",
+    "Uart",
+    "usart"
+  ]
 }

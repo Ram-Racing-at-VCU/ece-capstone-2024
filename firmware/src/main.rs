@@ -70,7 +70,7 @@ async fn main(_spawner: Spawner) {
         Some(ch3n),
         None,
         None,
-        time::hz(50_000),
+        time::khz(50),
         CountingMode::CenterAlignedBothInterrupts,
     );
 
@@ -110,7 +110,7 @@ async fn main(_spawner: Spawner) {
     loop {
         let x_n = map_range(sin(), (-1., 1.), (0., 1.));
         set_pwm_duty(&mut pwm, x_n, Channel::Ch1);
-        Timer::after_millis(10).await;
+        Timer::after_micros(10).await;
     }
 }
 
@@ -129,21 +129,7 @@ fn set_pwm_duty<T>(pwm: &mut ComplementaryPwm<T>, frac: f32, channel: Channel)
 where
     T: ComplementaryCaptureCompare16bitInstance,
 {
-    // let div = 1.0 / frac;
     let max = pwm.get_max_duty() as f32;
     let duty = (max * frac) as u16;
     pwm.set_duty(channel, duty);
 }
-
-// async fn generate_sin<'a, T>(pwm: &'a mut ComplementaryPwm<'a, T>, f: f32)
-// where
-//     T: ComplementaryCaptureCompare16bitInstance,
-// {
-//     loop {
-//         let t = (Instant::now().as_micros()) as f32 / 1e6;
-//         let frac = (f32::sin(2. * PI * f * t) + 1.0f32) * 0.5f32;
-//         // info!("frac is {}", frac);
-//         set_duty_cycle(pwm, frac, Channel::Ch1);
-//         Timer::after_micros(10).await;
-//     }
-// }
