@@ -1,1 +1,6 @@
-{ "recommendations": ["Zerotaskx.rust-extension-pack"] }
+{
+    "recommendations": [
+        "Zerotaskx.rust-extension-pack",
+        "streetsidesoftware.code-spell-checker"
+    ]
+}
