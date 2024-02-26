@@ -13,6 +13,8 @@ pub struct PIDController {
     pub dt: f32,
     /// Previous error value
     previous_error: f32,
+    /// Accumulated error
+    accumulated_error: f32,
 }
 
 impl PIDController {
@@ -37,17 +39,22 @@ impl PIDController {
 
     /// Update internal states of controller, and return control signal
     pub fn update(&mut self, input: f32, measurement: f32) -> f32 {
-        let error = input - measurement; // Calculate current value of error signal
+        // Calculate current error
+        let error = input - measurement;
 
-        self.previous_error = error; // Update previous error value to use in next iteration
+        // Update integral term
+        self.accumulated_error = self.accumulated_error + error * self.dt;
 
         // Proportional component (constant * error)
         let p = self.k_p * error;
         // Integral component (constant * integral(error, dt))
-        let i = self.k_i * (error + self.previous_error) * self.dt;
+        let i = self.k_i * self.accumulated_error * self.dt;
         // Derivative component (constant * d/dt(error))
         let d = self.k_d * (error - self.previous_error) / self.dt;
+        // Update previous error value to be used in next iteration
+        self.previous_error = error;
 
+        // Return controller output
         p + i + d
     }
 }
