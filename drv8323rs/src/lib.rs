@@ -13,15 +13,24 @@ extern crate std;
 use device_register::{Register, RegisterInterface};
 use embedded_hal::spi::SpiDevice;
 
+pub use device_register::{EditRegister, ReadRegister, WriteRegister};
+
 pub mod registers;
 
 /// The DRV8323RS. Use `.read()`, `.write()` and `.edit()` functions to access its registers.
-struct Drv8323rs<T>
+pub struct Drv8323rs<T>
 where
     T: SpiDevice<u8>,
 {
     /// The 4-wire SPI bus
     spi: T,
+}
+
+impl<T: SpiDevice<u8>> Drv8323rs<T> {
+    /// Constructor method
+    pub fn new(spi: T) -> Self {
+        Self { spi }
+    }
 }
 
 /// Internal trait used for `RegisterInterface<R, A>` implementation

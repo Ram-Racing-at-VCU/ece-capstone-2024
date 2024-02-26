@@ -4,6 +4,8 @@
 
 use core::{cell::RefCell, f32::consts::PI};
 
+use drv8323rs::{registers as driver_registers, Drv8323rs, EditRegister};
+
 use defmt::*;
 use micromath::F32Ext;
 
@@ -91,7 +93,9 @@ async fn main(_spawner: Spawner) {
 
     let spi: Mutex<NoopRawMutex, _> = Mutex::new(RefCell::new(spi));
 
-    let _spi_device = SpiDevice::new(&spi, Output::new(p.PA11, Level::Low, Speed::VeryHigh));
+    let drv8323rs = SpiDevice::new(&spi, Output::new(p.PA11, Level::Low, Speed::VeryHigh));
+    let mut drv8323rs = Drv8323rs::new(drv8323rs);
+    driver_setup(&mut drv8323rs);
 
     let uart_config = usart::Config::default();
 
@@ -139,4 +143,17 @@ where
     let max = pwm.get_max_duty() as f32;
     let duty = (max * frac) as u16;
     pwm.set_duty(channel, duty);
+}
+
+fn driver_setup<T: embedded_hal::spi::SpiDevice<u8>>(driver: &mut Drv8323rs<T>) {
+    // note: this is placeholder code just to test the SPI bus
+    // replace with actual setup code later...
+
+    driver
+        .edit(|r: &mut driver_registers::Control| {
+            r.set_pwm_mode(driver_registers::PwmMode::_3x);
+            r.set_brake(false);
+            debug!("control: {}", r.into_bytes());
+        })
+        .unwrap();
 }

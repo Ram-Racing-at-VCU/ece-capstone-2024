@@ -55,3 +55,6 @@ embassy-embedded-hal = { path = "../embassy/embassy-embedded-hal" }
 
 # synchronization primitives with async support
 embassy-sync = { path = "../embassy/embassy-sync" }
+
+# DRV driver
+drv8323rs = { path = "../drv8323rs" }

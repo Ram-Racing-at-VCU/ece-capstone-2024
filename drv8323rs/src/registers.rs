@@ -6,7 +6,7 @@ use modular_bitfield_msb::prelude::*;
 use crate::SerializableRegister;
 
 /// The status registers are used to reporting warning and fault conditions.
-#[derive(RORegister)]
+#[derive(RORegister, Clone, Copy)]
 #[register(addr = 0x00, ty = "u8")]
 #[bitfield(bytes = 2)]
 pub struct Status1 {
@@ -47,7 +47,7 @@ impl SerializableRegister<2> for Status1 {
 }
 
 /// The status registers are used to reporting warning and fault conditions.
-#[derive(RORegister)]
+#[derive(RORegister, Clone, Copy)]
 #[register(addr = 0x01, ty = "u8")]
 #[bitfield(bytes = 2)]
 pub struct Status2 {
@@ -88,7 +88,7 @@ impl SerializableRegister<2> for Status2 {
 }
 
 /// Available PWM modes on the DRV8323RS. Part of the `Control` register.
-#[derive(BitfieldSpecifier)]
+#[derive(BitfieldSpecifier, Clone, Copy, Debug)]
 #[bits = 2]
 pub enum PwmMode {
     /// 6x PWM Mode
@@ -102,7 +102,7 @@ pub enum PwmMode {
 }
 
 /// The status registers are used to reporting warning and fault conditions.
-#[derive(RWRegister)]
+#[derive(RWRegister, Clone, Copy)]
 #[register(addr = 0x02, ty = "u8")]
 #[bitfield(bytes = 2)]
 pub struct Control {
