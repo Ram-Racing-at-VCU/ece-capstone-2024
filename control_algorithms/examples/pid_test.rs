@@ -1,17 +1,36 @@
+#![no_std]
+#![no_main]
+
 use control_algorithms::pid::PIDController;
 
-fn main() {
-    // let mut controller = PIDController::default();
-    let mut controller = PIDController::new(1., 1., 1., 0.001);
-    let input_signal: Vec<f32> = vec![1.; 1000];
-    let measurement: f32 = 0.;
-    let mut output_signal: Vec<f32> = Vec::new();
+use defmt::*;
 
-    for input in input_signal {
-        output_signal.push(controller.update(input, measurement));
+use defmt_rtt as _;
+
+#[defmt::panic_handler]
+fn panic() -> ! {
+    panic_probe::hard_fault()
+}
+
+#[cortex_m_rt::entry]
+fn main() -> ! {
+    let mut controller = PIDController::new(1., 1., 1., 0.001);
+
+    let input_signal = [1f32; 1000];
+
+    let measurement: f32 = 0.;
+
+    let mut output_signal = [0f32; 1000];
+
+    for (i, input) in input_signal.iter().enumerate() {
+        output_signal[i] = controller.update(*input, measurement);
     }
 
     for i in output_signal {
         println!("{}", i)
+    }
+
+    loop {
+        cortex_m::asm::wfe();
     }
 }

@@ -3,11 +3,19 @@ name = "control_algorithms"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+test = false
+bench = false
 
 [dependencies]
-# default features for nalgebra use `std` library
 nalgebra = { version = "0.32.4", default-features = false, features = [
     "macros",
 ] }
 micromath = "2.1.0"
+
+[dev-dependencies]
+cortex-m = { version = "0.7.7", features = ["critical-section-single-core"] }
+cortex-m-rt = { version = "0.7.3" }
+defmt = { version = "0.3.6" }
+defmt-rtt = { version = "0.4.0" }
+panic-probe = { version = "0.3.1" }

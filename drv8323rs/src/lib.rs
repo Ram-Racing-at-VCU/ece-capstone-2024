@@ -6,6 +6,10 @@
 #![warn(missing_docs)]
 #![warn(clippy::missing_docs_in_private_items)]
 
+#[cfg(all(test, not(target_arch = "arm")))]
+#[macro_use]
+extern crate std;
+
 use device_register::{Register, RegisterInterface};
 use embedded_hal::spi::SpiDevice;
 
@@ -62,8 +66,9 @@ where
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_arch = "arm")))]
 mod test {
+
     use crate::registers::{Control, PwmMode};
 
     #[test]
