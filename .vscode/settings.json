@@ -1,7 +1,6 @@
 {
   "editor.formatOnSave": true,
   "git.autofetch": true,
-  "rust-analyzer.check.command": "clippy",
   "cSpell.words": [
     "bitfield",
     "consts",
@@ -27,6 +26,11 @@
     "Uart",
     "usart"
   ],
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.check.extraArgs": [
+    "--no-deps"
+  ],
   "rust-analyzer.cargo.target": "thumbv7em-none-eabihf",
+  "rust-analyzer.check.allTargets": false,
   "rust-analyzer.imports.preferNoStd": true
 }

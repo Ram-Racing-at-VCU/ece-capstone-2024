@@ -1,4 +1,4 @@
-use control_algorithms::PIDController;
+use control_algorithms::pid::PIDController;
 
 fn main() {
     // let mut controller = PIDController::default();
