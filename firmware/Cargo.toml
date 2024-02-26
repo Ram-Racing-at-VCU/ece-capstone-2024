@@ -9,13 +9,25 @@ test = false
 bench = false
 
 [dependencies]
-cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
-cortex-m-rt = { version = "0.7" }
+# cortex-m assembly instructions
+cortex-m = { version = "0.7.7", features = ["critical-section-single-core"] }
+# cortex-m runtime
+cortex-m-rt = { version = "0.7.3" }
 
-defmt = { version = "0.3" }
-defmt-rtt = { version = "0.4" }
-panic-probe = { version = "0.3", features = ["print-rtt"] }
+# no_std debug printing/logging
+defmt = { version = "0.3.6" }
+# RTT backend for defmt
+defmt-rtt = { version = "0.4.0" }
+# panic handler for defmt
+panic-probe = { version = "0.3.1", features = ["print-rtt"] }
 
+# embedded api for implementing platform agnostic drivers
+embedded-hal = "1.0.0"
+
+# embedded floating point math approximations
+micromath = "2.1.0"
+
+# embassy async runtime
 embassy-executor = { path = "../embassy/embassy-executor", features = [
     "defmt",
     "nightly",
@@ -24,8 +36,10 @@ embassy-executor = { path = "../embassy/embassy-executor", features = [
     "executor-thread",
 ] }
 
+# uses hardware timers to implement async delay and timeout functions
 embassy-time = { path = "../embassy/embassy-time", features = ["defmt"] }
 
+# hardware-abstraction-layer implementation
 embassy-stm32 = { path = "../embassy/embassy-stm32", features = [
     "defmt",
     "exti",
@@ -36,42 +50,8 @@ embassy-stm32 = { path = "../embassy/embassy-stm32", features = [
     "unstable-pac",
 ] }
 
+# utilities to use embedded-hal API with embassy
 embassy-embedded-hal = { path = "../embassy/embassy-embedded-hal" }
 
+# synchronization primitives with async support
 embassy-sync = { path = "../embassy/embassy-sync" }
-
-embedded-hal = { package = "embedded-hal", version = "=1.0.0" }
-
-[profile.dev]
-codegen-units = 1
-debug = 2
-debug-assertions = true
-incremental = false
-opt-level = "s"
-overflow-checks = true
-
-[profile.test]
-codegen-units = 1
-debug = 2
-debug-assertions = true
-incremental = false
-opt-level = "s"
-overflow-checks = true
-
-[profile.release]
-codegen-units = 1
-debug = 2
-debug-assertions = false
-incremental = false
-lto = "fat"
-opt-level = "s"
-overflow-checks = false
-
-[profile.bench]
-codegen-units = 1
-debug = 2
-debug-assertions = false
-incremental = false
-lto = "fat"
-opt-level = "s"
-overflow-checks = false

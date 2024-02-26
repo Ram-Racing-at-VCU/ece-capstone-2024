@@ -1,3 +1,5 @@
+//! Registers of the DRV8323RS, as specified in the datasheet.
+
 use device_register::{RORegister, RWRegister};
 use modular_bitfield_msb::prelude::*;
 
@@ -35,14 +37,12 @@ pub struct Status1 {
 }
 
 impl SerializableRegister<2> for Status1 {
-    type Error = ();
-
-    fn from_bytes(bytes: [u8; 2]) -> Result<Self, Self::Error> {
-        Ok(Self::from_bytes(bytes))
+    fn from_bytes(bytes: [u8; 2]) -> Self {
+        Self::from_bytes(bytes)
     }
 
-    fn to_bytes(self) -> Result<[u8; 2], Self::Error> {
-        Ok(Self::into_bytes(self))
+    fn to_bytes(self) -> [u8; 2] {
+        Self::into_bytes(self)
     }
 }
 
@@ -78,17 +78,16 @@ pub struct Status2 {
 }
 
 impl SerializableRegister<2> for Status2 {
-    type Error = ();
-
-    fn from_bytes(bytes: [u8; 2]) -> Result<Self, Self::Error> {
-        Ok(Self::from_bytes(bytes))
+    fn from_bytes(bytes: [u8; 2]) -> Self {
+        Self::from_bytes(bytes)
     }
 
-    fn to_bytes(self) -> Result<[u8; 2], Self::Error> {
-        Ok(Self::into_bytes(self))
+    fn to_bytes(self) -> [u8; 2] {
+        Self::into_bytes(self)
     }
 }
 
+/// Available PWM modes on the DRV8323RS. Part of the `Control` register.
 #[derive(BitfieldSpecifier)]
 #[bits = 2]
 pub enum PwmMode {
@@ -130,13 +129,11 @@ pub struct Control {
 }
 
 impl SerializableRegister<2> for Control {
-    type Error = ();
-
-    fn from_bytes(bytes: [u8; 2]) -> Result<Self, Self::Error> {
-        Ok(Self::from_bytes(bytes))
+    fn from_bytes(bytes: [u8; 2]) -> Self {
+        Self::from_bytes(bytes)
     }
 
-    fn to_bytes(self) -> Result<[u8; 2], Self::Error> {
-        Ok(Self::into_bytes(self))
+    fn to_bytes(self) -> [u8; 2] {
+        Self::into_bytes(self)
     }
 }

@@ -1,21 +1,33 @@
+//! Implementations of control algorithms and functions relating to them.
+
 #![no_std]
+#![warn(missing_docs)]
+#![warn(clippy::missing_docs_in_private_items)]
 
-// Change `extern crate` to use when using crates
-extern crate nalgebra as na; // no-std library for matrix arithmetic
+use micromath::F32Ext;
+use nalgebra as na; // no-std library for matrix arithmetic
 
-#[derive(Default)] // Default Constructor for PID Class; initialize all fields to 0.
+/// A simple implementation of the standard PID controller
+#[derive(Default)]
 pub struct PIDController {
-    pub k_p: f32,        // Proportional constant
-    pub k_i: f32,        // Integral constant
-    pub k_d: f32,        // Derivative constant
-    pub dt: f32,         // Sampling time
-    error: f32,          // Current error value (internal to object)
-    previous_error: f32, // Previous error value (internal to object)
-    output: f32,         // Output value (internal to object)
+    /// Proportional constant
+    pub k_p: f32,
+    /// Integral constant     
+    pub k_i: f32,
+    /// Derivative constant
+    pub k_d: f32,
+    /// Sampling time
+    pub dt: f32,
+    /// Current error value
+    error: f32,
+    /// Previous error value
+    previous_error: f32,
+    /// Output value
+    output: f32,
 }
 
 impl PIDController {
-    // Constructor with field values
+    /// Constructor with field values
     pub fn new(k_p: f32, k_i: f32, k_d: f32, dt: f32) -> Self {
         Self {
             k_p,
@@ -26,7 +38,7 @@ impl PIDController {
         }
     }
 
-    // Modify controller parameters
+    /// Modify controller parameters
     pub fn modify(&mut self, k_p: f32, k_i: f32, k_d: f32, dt: f32) {
         self.k_p = k_p;
         self.k_i = k_i;
@@ -34,7 +46,7 @@ impl PIDController {
         self.dt = dt;
     }
 
-    // Update internal states of controller, and return control signal
+    /// Update internal states of controller, and return control signal
     pub fn update(&mut self, input: f32, measurement: f32) -> f32 {
         self.error = input - measurement; // Calculate current value of error signal
 
@@ -44,13 +56,13 @@ impl PIDController {
 
         self.previous_error = self.error; // Update previous error value to use in next iteration
 
-        return self.output;
+        self.output
     }
 }
 
-// Apply clarke transform to input signal
-fn clarke_transform(input_signal: na::SVector<f32, 3>) -> na::SVector<f32, 2> {
-    return 2f32 / 3f32
+/// Apply clarke transform to input signal
+pub fn clarke_transform(input_signal: na::SVector<f32, 3>) -> na::SVector<f32, 2> {
+    2f32 / 3f32
         * na::SMatrix::<f32, 2, 3>::new(
             // Defining Park matrix
             1f32,
@@ -60,42 +72,42 @@ fn clarke_transform(input_signal: na::SVector<f32, 3>) -> na::SVector<f32, 2> {
             3f32.sqrt() / 2f32,
             3f32.sqrt() / 2f32,
         )
-        * input_signal;
+        * input_signal
 }
 
-// Apply inverse clarke transform to input signal
-fn inverse_clarke_transform(input_signal: na::SVector<f32, 2>) -> na::SVector<f32, 3> {
-    return na::SMatrix::<f32, 3, 2>::new(
+/// Apply inverse clarke transform to input signal
+pub fn inverse_clarke_transform(input_signal: na::SVector<f32, 2>) -> na::SVector<f32, 3> {
+    na::SMatrix::<f32, 3, 2>::new(
         1f32,
         0f32,
         -0.5f32,
         3f32.sqrt() / 2f32,
         -0.5f32,
-        -3f32.sqrt() / 2f32,
-    ) * input_signal;
+        -(3f32.sqrt()) / 2f32,
+    ) * input_signal
 }
 
-// Apply park transform to input signal
-fn park_transform(input_signal: na::SVector<f32, 2>, phase_angle: f32) -> na::SVector<f32, 2> {
-    return na::SMatrix::<f32, 2, 2>::new(
+/// Apply park transform to input signal
+pub fn park_transform(input_signal: na::SVector<f32, 2>, phase_angle: f32) -> na::SVector<f32, 2> {
+    na::SMatrix::<f32, 2, 2>::new(
         // Defining clarke matrix
         phase_angle.cos(),
         phase_angle.sin(),
         -phase_angle.sin(),
         phase_angle.cos(),
-    ) * input_signal;
+    ) * input_signal
 }
 
-// Apply inverse park transfrom to input signal
-fn inverse_park_transform(
+/// Apply inverse park transform to input signal
+pub fn inverse_park_transform(
     input_signal: na::SVector<f32, 2>,
     phase_angle: f32,
 ) -> na::SVector<f32, 2> {
-    return na::SMatrix::<f32, 2, 2>::new(
+    na::SMatrix::<f32, 2, 2>::new(
         // Defining clarke matrix
         phase_angle.cos(),
         -phase_angle.sin(),
         phase_angle.sin(),
         phase_angle.cos(),
-    ) * input_signal;
+    ) * input_signal
 }

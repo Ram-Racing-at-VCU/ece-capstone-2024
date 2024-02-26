@@ -1,0 +1,13 @@
+[package]
+name = "control_algorithms"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# default features for nalgebra use `std` library
+nalgebra = { version = "0.32.4", default-features = false, features = [
+    "macros",
+] }
+micromath = "2.1.0"

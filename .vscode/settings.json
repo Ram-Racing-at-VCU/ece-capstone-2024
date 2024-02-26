@@ -7,6 +7,7 @@
     "consts",
     "conv",
     "cpuv",
+    "datasheet",
     "defmt",
     "divp",
     "divq",
@@ -16,6 +17,7 @@
     "Irqs",
     "micromath",
     "MOSFET",
+    "nalgebra",
     "nfault",
     "otsd",
     "Pllsrc",
@@ -24,5 +26,7 @@
     "sbus",
     "Uart",
     "usart"
-  ]
+  ],
+  "rust-analyzer.cargo.target": "thumbv7em-none-eabihf",
+  "rust-analyzer.imports.preferNoStd": true
 }

@@ -5,6 +5,8 @@
 use core::{cell::RefCell, f32::consts::PI};
 
 use defmt::*;
+use micromath::F32Ext;
+
 use embassy_embedded_hal::shared_bus::blocking::spi::SpiDevice;
 use embassy_executor::Spawner;
 use embassy_stm32::{
@@ -25,8 +27,14 @@ use embassy_stm32::{
 use embassy_sync::blocking_mutex::{raw::NoopRawMutex, Mutex};
 use embassy_time::{Instant, Timer};
 
-// logger and panic handler
-use {defmt_rtt as _, panic_probe as _};
+// logger
+use defmt_rtt as _;
+
+// panic handler
+#[defmt::panic_handler]
+fn panic() -> ! {
+    panic_probe::hard_fault()
+}
 
 // bind USART interrupt
 bind_interrupts!(struct Irqs {
@@ -116,7 +124,7 @@ async fn main(_spawner: Spawner) {
 fn generate_sin(frequency: f32) -> impl Fn() -> f32 {
     move || {
         let t = Instant::now().as_micros() as f32 / 1e6;
-        f32::sin(2. * PI * frequency * t)
+        (2. * PI * frequency * t).sin()
     }
 }
 
