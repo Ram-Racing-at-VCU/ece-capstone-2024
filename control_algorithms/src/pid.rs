@@ -43,7 +43,7 @@ impl PIDController {
         let error = input - measurement;
 
         // Update integral term
-        self.accumulated_error = self.accumulated_error + error * self.dt;
+        self.accumulated_error += error * self.dt;
 
         // Proportional component (constant * error)
         let p = self.k_p * error;
