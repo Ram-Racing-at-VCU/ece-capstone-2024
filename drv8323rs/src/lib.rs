@@ -11,7 +11,7 @@
 extern crate std;
 
 use device_register::{Register, RegisterInterface};
-use embedded_hal::spi::SpiDevice;
+use embedded_hal::spi::{Operation, SpiDevice};
 
 pub use device_register::{EditRegister, ReadRegister, WriteRegister};
 
@@ -52,12 +52,12 @@ where
     type Error = Spi::Error;
 
     fn read_register(&mut self) -> Result<R, Self::Error> {
-        // issue read command
-        self.spi.write(&[0x80 | (R::ADDRESS << 3), 0])?;
-
-        // fill buffer
         let mut buf = [0, 0];
-        self.spi.read(&mut buf)?;
+
+        self.spi.transaction(&mut [
+            Operation::Write(&[0x80 | (R::ADDRESS << 3), 0]),
+            Operation::Read(&mut buf),
+        ])?;
 
         // deserialize
         Ok(R::from_bytes(buf))

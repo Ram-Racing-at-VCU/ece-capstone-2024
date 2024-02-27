@@ -84,7 +84,7 @@ async fn main(_spawner: Spawner) {
     );
 
     let mut spi_config = spi::Config::default();
-    spi_config.frequency = time::khz(100);
+    spi_config.frequency = time::mhz(10);
     spi_config.mode = spi::MODE_1;
 
     let spi = Spi::new(
