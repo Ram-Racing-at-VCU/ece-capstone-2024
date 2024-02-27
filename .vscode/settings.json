@@ -2,6 +2,7 @@
   "editor.formatOnSave": true,
   "git.autofetch": true,
   "cSpell.words": [
+    "asynch",
     "baudrate",
     "bitfield",
     "consts",
