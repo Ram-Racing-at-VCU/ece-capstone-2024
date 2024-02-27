@@ -3,8 +3,14 @@ name = "sbus"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+defmt = ["dep:defmt"]
+
 [lib]
 test = false
 bench = false
 
 [dependencies]
+embedded-io-async = "0.6.1"
+modular-bitfield = "0.11.2"
+defmt = { version = "*", optional = true }

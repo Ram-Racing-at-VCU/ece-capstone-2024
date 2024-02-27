@@ -2,6 +2,7 @@
   "editor.formatOnSave": true,
   "git.autofetch": true,
   "cSpell.words": [
+    "baudrate",
     "bitfield",
     "consts",
     "conv",
@@ -11,9 +12,11 @@
     "divp",
     "divq",
     "divr",
+    "Futaba",
     "gpio",
     "INHC",
     "Irqs",
+    "LPUART",
     "micromath",
     "MOSFET",
     "nalgebra",
@@ -31,7 +34,7 @@
   "rust-analyzer.check.extraArgs": [
     "--lib",
     "--bins",
-    "--no-deps"
+    "--no-deps",
   ],
   "rust-analyzer.cargo.target": "thumbv7em-none-eabihf",
   "rust-analyzer.imports.preferNoStd": true,
