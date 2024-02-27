@@ -24,6 +24,9 @@ panic-probe = { version = "0.3.1", features = ["print-rtt"] }
 # embedded api for implementing platform agnostic drivers
 embedded-hal = "1.0.0"
 
+# async version of embedded hal api
+embedded-hal-async = "1.0.0"
+
 # async embedded api for implementing serial ports
 embedded-io-async = "0.6.1"
 
@@ -60,7 +63,7 @@ embassy-embedded-hal = { path = "../embassy/embassy-embedded-hal" }
 embassy-sync = { path = "../embassy/embassy-sync" }
 
 # DRV driver
-drv8323rs = { path = "../drv8323rs" }
+drv8323rs = { path = "../drv8323rs", features = ["async"] }
 
 # SBUS driver
 sbus = { path = "../sbus", features = ["defmt"] }

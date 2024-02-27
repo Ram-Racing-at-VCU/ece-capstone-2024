@@ -33,7 +33,7 @@ where
     pwm.set_duty(channel, duty);
 }
 
-pub fn driver_setup<T: embedded_hal::spi::SpiDevice<u8>>(driver: &mut Drv8323rs<T>) {
+pub async fn driver_setup<T: embedded_hal_async::spi::SpiDevice<u8>>(driver: &mut Drv8323rs<T>) {
     // note: this is placeholder code just to test the SPI bus
     // replace with actual setup code later...
 
@@ -43,6 +43,7 @@ pub fn driver_setup<T: embedded_hal::spi::SpiDevice<u8>>(driver: &mut Drv8323rs<
             r.set_brake(false);
             debug!("control: {}", r.into_bytes());
         })
+        .await
         .unwrap();
 }
 

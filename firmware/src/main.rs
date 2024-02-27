@@ -4,13 +4,11 @@
 
 mod helpers;
 
-use core::cell::RefCell;
-
 use drv8323rs::Drv8323rs;
 
 use defmt::*;
 
-use embassy_embedded_hal::shared_bus::blocking::spi::SpiDevice;
+use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::{task, Spawner};
 use embassy_stm32::{
     gpio::{Input, Level, Output, OutputType, Pull, Speed},
@@ -26,7 +24,7 @@ use embassy_stm32::{
     usart::{self, DataBits, Parity, StopBits, UartRx},
     Config,
 };
-use embassy_sync::blocking_mutex::{raw::NoopRawMutex, Mutex};
+use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 use embassy_time::Timer;
 
 // bind logger
@@ -93,11 +91,11 @@ async fn main(spawner: Spawner) {
         p.SPI1, p.PB3, p.PB5, p.PB4, p.DMA1_CH1, p.DMA1_CH2, spi_config,
     );
 
-    let spi: Mutex<NoopRawMutex, _> = Mutex::new(RefCell::new(spi));
+    let spi: Mutex<NoopRawMutex, _> = Mutex::new(spi);
 
     let drv8323rs = SpiDevice::new(&spi, Output::new(p.PA11, Level::Low, Speed::VeryHigh));
     let mut drv8323rs = Drv8323rs::new(drv8323rs);
-    helpers::driver_setup(&mut drv8323rs);
+    helpers::driver_setup(&mut drv8323rs).await;
 
     let mut uart_config = usart::Config::default();
     uart_config.baudrate = 100_000;
