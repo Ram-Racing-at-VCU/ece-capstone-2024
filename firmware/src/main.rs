@@ -2,49 +2,51 @@
 #![no_main]
 #![feature(type_alias_impl_trait)]
 
-use core::{cell::RefCell, f32::consts::PI};
+mod helpers;
 
-use drv8323rs::{registers as driver_registers, Drv8323rs, EditRegister};
+use core::cell::RefCell;
+
+use drv8323rs::Drv8323rs;
 
 use defmt::*;
-use micromath::F32Ext;
 
 use embassy_embedded_hal::shared_bus::blocking::spi::SpiDevice;
-use embassy_executor::Spawner;
+use embassy_executor::{task, Spawner};
 use embassy_stm32::{
-    bind_interrupts,
     gpio::{Input, Level, Output, OutputType, Pull, Speed},
+    peripherals::{self, DMA1_CH3, USART2},
     rcc,
     spi::{self, Spi},
     time,
     timer::{
         complementary_pwm::{ComplementaryPwm, ComplementaryPwmPin},
         simple_pwm::PwmPin,
-        Channel, ComplementaryCaptureCompare16bitInstance, CountingMode,
+        Channel, CountingMode,
     },
-    usart::{self, UartRx},
+    usart::{self, DataBits, Parity, StopBits, UartRx},
     Config,
 };
-
 use embassy_sync::blocking_mutex::{raw::NoopRawMutex, Mutex};
-use embassy_time::{Instant, Timer};
+use embassy_time::Timer;
 
-// logger
+// bind logger
 use defmt_rtt as _;
+use helpers::UartRxWrapper;
+use sbus::Sbus;
 
-// panic handler
+// bind panic handler
 #[defmt::panic_handler]
 fn panic() -> ! {
     panic_probe::hard_fault()
 }
 
 // bind USART interrupt
-bind_interrupts!(struct Irqs {
-    USART2 => usart::InterruptHandler<embassy_stm32::peripherals::USART2>;
+embassy_stm32::bind_interrupts!(struct Irqs {
+    USART2 => usart::InterruptHandler<peripherals::USART2>;
 });
 
 #[embassy_executor::main]
-async fn main(_spawner: Spawner) {
+async fn main(spawner: Spawner) {
     let mut config = Config::default();
 
     // configure all system clocks to 170 MHz
@@ -95,11 +97,20 @@ async fn main(_spawner: Spawner) {
 
     let drv8323rs = SpiDevice::new(&spi, Output::new(p.PA11, Level::Low, Speed::VeryHigh));
     let mut drv8323rs = Drv8323rs::new(drv8323rs);
-    driver_setup(&mut drv8323rs);
+    helpers::driver_setup(&mut drv8323rs);
 
-    let uart_config = usart::Config::default();
+    let mut uart_config = usart::Config::default();
+    uart_config.baudrate = 100_000;
+    uart_config.data_bits = DataBits::DataBits8;
+    uart_config.stop_bits = StopBits::STOP2;
+    uart_config.parity = Parity::ParityEven;
+    uart_config.invert_rx = true;
 
-    let _sbus = UartRx::new(p.USART2, Irqs, p.PA3, p.DMA1_CH3, uart_config);
+    let sbus = UartRx::new(p.USART2, Irqs, p.PA3, p.DMA1_CH3, uart_config).unwrap();
+
+    let sbus = helpers::usart_to_sbus(sbus);
+
+    spawner.spawn(get_receiver_data(sbus)).unwrap();
 
     let _driver_cal = Output::new(p.PB7, Level::Low, Speed::Low);
 
@@ -116,44 +127,30 @@ async fn main(_spawner: Spawner) {
     info!("PWM initialized");
     info!("PWM max duty {}", max);
 
-    let sin = generate_sin(1000.);
+    let sin = helpers::generate_sin(1000.);
 
     loop {
-        let x_n = map_range(sin(), (-1., 1.), (0., 1.));
-        set_pwm_duty(&mut pwm, x_n, Channel::Ch1);
+        let x_n = helpers::map_range(sin(), (-1., 1.), (0., 1.));
+        helpers::set_pwm_duty(&mut pwm, x_n, Channel::Ch1);
         Timer::after_micros(10).await;
     }
 }
 
-fn generate_sin(frequency: f32) -> impl Fn() -> f32 {
-    move || {
-        let t = Instant::now().as_micros() as f32 / 1e6;
-        (2. * PI * frequency * t).sin()
+#[task]
+async fn get_receiver_data(mut sbus: Sbus<UartRxWrapper<'static, USART2, DMA1_CH3>>) {
+    loop {
+        match sbus.get_packet().await {
+            Ok(data) => {
+                debug!("raw: {:#04x}", data.into_bytes());
+                debug!(
+                    "ch1: {:05}, ch2: {:05}, ch3: {:05}, ch4: {:05}",
+                    data.ch1(),
+                    data.ch2(),
+                    data.ch3(),
+                    data.ch4(),
+                );
+            }
+            Err(e) => debug!("error happened while reading sbus: {}", e),
+        }
     }
-}
-
-fn map_range(val: f32, before: (f32, f32), after: (f32, f32)) -> f32 {
-    (val - before.0) * (after.1 - after.0) / (before.1 - before.0) + after.0
-}
-
-fn set_pwm_duty<T>(pwm: &mut ComplementaryPwm<T>, frac: f32, channel: Channel)
-where
-    T: ComplementaryCaptureCompare16bitInstance,
-{
-    let max = pwm.get_max_duty() as f32;
-    let duty = (max * frac) as u16;
-    pwm.set_duty(channel, duty);
-}
-
-fn driver_setup<T: embedded_hal::spi::SpiDevice<u8>>(driver: &mut Drv8323rs<T>) {
-    // note: this is placeholder code just to test the SPI bus
-    // replace with actual setup code later...
-
-    driver
-        .edit(|r: &mut driver_registers::Control| {
-            r.set_pwm_mode(driver_registers::PwmMode::_3x);
-            r.set_brake(false);
-            debug!("control: {}", r.into_bytes());
-        })
-        .unwrap();
 }
