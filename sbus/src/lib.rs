@@ -3,6 +3,7 @@
 #![no_std]
 #![warn(missing_docs)]
 #![warn(clippy::missing_docs_in_private_items)]
+#![allow(redundant_semicolons)] // part of bitfield macro
 
 use embedded_io_async::{Read, ReadExactError};
 use modular_bitfield::prelude::*;
@@ -22,7 +23,7 @@ pub enum Error<T> {
     /// An error occurred while reading from the bus
     ReadExactError(ReadExactError<T>),
     /// The first byte was not the frame sync byte
-    FrameSync,
+    HeaderSync,
 }
 
 impl<T> From<ReadExactError<T>> for Error<T> {
@@ -89,7 +90,7 @@ impl<T: Read> Sbus<T> {
                 self.bus.read_exact(&mut buf[0..idx]).await?;
             }
 
-            return Err(Error::FrameSync);
+            return Err(Error::HeaderSync);
         }
 
         Ok(Data::from_bytes(buf))

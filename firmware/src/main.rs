@@ -141,7 +141,7 @@ async fn get_receiver_data(mut sbus: Sbus<UartRxWrapper<'static, USART2, DMA1_CH
     loop {
         match sbus.get_packet().await {
             Ok(data) => {
-                debug!("raw: {:#04x}", data.into_bytes());
+                // debug!("raw: {:#04x}", data.into_bytes());
                 debug!(
                     "ch1: {:05}, ch2: {:05}, ch3: {:05}, ch4: {:05}",
                     data.ch1(),
@@ -150,7 +150,7 @@ async fn get_receiver_data(mut sbus: Sbus<UartRxWrapper<'static, USART2, DMA1_CH
                     data.ch4(),
                 );
             }
-            Err(e) => debug!("error happened while reading sbus: {}", e),
+            Err(e) => warn!("error happened while reading sbus: {}", e),
         }
     }
 }
