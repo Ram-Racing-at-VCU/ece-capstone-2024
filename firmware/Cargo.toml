@@ -66,3 +66,6 @@ drv8323rs = { path = "../drv8323rs", features = ["async"] }
 
 # SBUS driver
 sbus = { path = "../sbus", features = ["defmt"] }
+
+# LTC driver
+ltc1408-12 = { path = "../ltc1408-12" }

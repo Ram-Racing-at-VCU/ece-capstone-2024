@@ -1,5 +1,5 @@
 [workspace]
-members = ["control_algorithms", "drv8323rs", "firmware", "sbus"]
+members = ["control_algorithms", "drv8323rs", "firmware", "ltc1408-12", "sbus"]
 resolver = "2"
 
 [profile.dev]
