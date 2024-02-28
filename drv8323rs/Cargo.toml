@@ -3,6 +3,10 @@ name = "drv8323rs"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+test = false  # uncomment to run tests
+bench = false
+
 [features]
 async = ["dep:embedded-hal-async", "dep:device-register-async"]
 

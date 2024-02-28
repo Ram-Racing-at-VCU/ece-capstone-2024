@@ -31,19 +31,7 @@
     "usart"
   ],
   "rust-analyzer.check.command": "clippy",
-  "rust-analyzer.check.allTargets": false,
-  "rust-analyzer.check.extraArgs": [
-    "--lib",
-    "--bins",
-    "--no-deps",
-    // disable embassy-related warnings
-    // these should occasionally be double-checked
-    "--",
-    "-Aclippy::not_unsafe_ptr_arg_deref",
-    "-Aclippy::useless_attribute",
-    "-Aclippy::mut_from_ref"
-  ],
-  "rust-analyzer.cargo.target": "thumbv7em-none-eabihf",
+  "rust-analyzer.check.allTargets": true,
   "rust-analyzer.imports.preferNoStd": true,
-  "rust-analyzer.check.workspace": true,
+  "rust-analyzer.check.workspace": false,
 }

@@ -34,19 +34,18 @@ embedded-io-async = "0.6.1"
 micromath = "2.1.0"
 
 # embassy async runtime
-embassy-executor = { path = "../embassy/embassy-executor", features = [
+embassy-executor = { version = "0.5.0", features = [
     "defmt",
-    "nightly",
     "integrated-timers",
     "arch-cortex-m",
     "executor-thread",
 ] }
 
 # uses hardware timers to implement async delay and timeout functions
-embassy-time = { path = "../embassy/embassy-time", features = ["defmt"] }
+embassy-time = { version = "0.3.0", features = ["defmt"] }
 
 # hardware-abstraction-layer implementation
-embassy-stm32 = { path = "../embassy/embassy-stm32", features = [
+embassy-stm32 = { version = "0.1.0", features = [
     "defmt",
     "exti",
     "time-driver-tim2",
@@ -57,10 +56,10 @@ embassy-stm32 = { path = "../embassy/embassy-stm32", features = [
 ] }
 
 # utilities to use embedded-hal API with embassy
-embassy-embedded-hal = { path = "../embassy/embassy-embedded-hal" }
+embassy-embedded-hal = "0.1.0"
 
 # synchronization primitives with async support
-embassy-sync = { path = "../embassy/embassy-sync" }
+embassy-sync = "0.5.0"
 
 # DRV driver
 drv8323rs = { path = "../drv8323rs", features = ["async"] }

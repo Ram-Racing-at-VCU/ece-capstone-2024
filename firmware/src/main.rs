@@ -1,10 +1,10 @@
 #![no_std]
 #![no_main]
-#![feature(type_alias_impl_trait)]
 
 mod helpers;
 
 use drv8323rs::Drv8323rs;
+use sbus::Sbus;
 
 use defmt::*;
 
@@ -29,8 +29,6 @@ use embassy_time::Timer;
 
 // bind logger
 use defmt_rtt as _;
-use helpers::UartRxWrapper;
-use sbus::Sbus;
 
 // bind panic handler
 #[defmt::panic_handler]
@@ -51,12 +49,12 @@ async fn main(spawner: Spawner) {
     let mut rcc = rcc::Config::default();
     // rcc.mux = rcc::ClockSrc::PLL;
     rcc.pll = Some(rcc::Pll {
-        source: rcc::Pllsrc::HSI,       // 16 MHz
-        prediv: rcc::PllPreDiv::DIV4,   // 16/4= 4 MHz
-        mul: rcc::PllMul::MUL85,        // 4*85 = 340 MHz
-        divp: Some(rcc::PllPDiv::DIV2), // 340/2 = 170 MHz
-        divq: Some(rcc::PllQDiv::DIV2), // 340/2 = 170 MHz
-        divr: Some(rcc::PllRDiv::DIV2), // 340/2 = 170 MHz
+        source: rcc::PllSource::HSI,  // 16 MHz
+        prediv_m: rcc::PllM::DIV4,    // 16/4= 4 MHz
+        mul_n: rcc::PllN::MUL85,      // 4*85 = 340 MHz
+        div_p: Some(rcc::PllP::DIV2), // 340/2 = 170 MHz
+        div_q: Some(rcc::PllQ::DIV2), // 340/2 = 170 MHz
+        div_r: Some(rcc::PllR::DIV2), // 340/2 = 170 MHz
     });
     config.rcc = rcc;
 
@@ -135,7 +133,7 @@ async fn main(spawner: Spawner) {
 }
 
 #[task]
-async fn get_receiver_data(mut sbus: Sbus<UartRxWrapper<'static, USART2, DMA1_CH3>>) {
+async fn get_receiver_data(mut sbus: Sbus<helpers::UartRxWrapper<'static, USART2, DMA1_CH3>>) {
     loop {
         match sbus.get_packet().await {
             Ok(data) => {
