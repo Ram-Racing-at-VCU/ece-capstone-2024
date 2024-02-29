@@ -1,16 +1,14 @@
 #![no_std]
 #![no_main]
-#![feature(type_alias_impl_trait)]
 
 mod helpers;
 
-use core::cell::RefCell;
-
 use drv8323rs::Drv8323rs;
+use sbus::Sbus;
 
 use defmt::*;
 
-use embassy_embedded_hal::shared_bus::blocking::spi::SpiDevice;
+use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::{task, Spawner};
 use embassy_stm32::{
     gpio::{Input, Level, Output, OutputType, Pull, Speed},
@@ -26,13 +24,11 @@ use embassy_stm32::{
     usart::{self, DataBits, Parity, StopBits, UartRx},
     Config,
 };
-use embassy_sync::blocking_mutex::{raw::NoopRawMutex, Mutex};
+use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 use embassy_time::Timer;
 
 // bind logger
 use defmt_rtt as _;
-use helpers::UartRxWrapper;
-use sbus::Sbus;
 
 // bind panic handler
 #[defmt::panic_handler]
@@ -53,12 +49,12 @@ async fn main(spawner: Spawner) {
     let mut rcc = rcc::Config::default();
     // rcc.mux = rcc::ClockSrc::PLL;
     rcc.pll = Some(rcc::Pll {
-        source: rcc::Pllsrc::HSI,       // 16 MHz
-        prediv: rcc::PllPreDiv::DIV4,   // 16/4= 4 MHz
-        mul: rcc::PllMul::MUL85,        // 4*85 = 340 MHz
-        divp: Some(rcc::PllPDiv::DIV2), // 340/2 = 170 MHz
-        divq: Some(rcc::PllQDiv::DIV2), // 340/2 = 170 MHz
-        divr: Some(rcc::PllRDiv::DIV2), // 340/2 = 170 MHz
+        source: rcc::PllSource::HSI,  // 16 MHz
+        prediv_m: rcc::PllM::DIV4,    // 16/4= 4 MHz
+        mul_n: rcc::PllN::MUL85,      // 4*85 = 340 MHz
+        div_p: Some(rcc::PllP::DIV2), // 340/2 = 170 MHz
+        div_q: Some(rcc::PllQ::DIV2), // 340/2 = 170 MHz
+        div_r: Some(rcc::PllR::DIV2), // 340/2 = 170 MHz
     });
     config.rcc = rcc;
 
@@ -93,11 +89,11 @@ async fn main(spawner: Spawner) {
         p.SPI1, p.PB3, p.PB5, p.PB4, p.DMA1_CH1, p.DMA1_CH2, spi_config,
     );
 
-    let spi: Mutex<NoopRawMutex, _> = Mutex::new(RefCell::new(spi));
+    let spi: Mutex<NoopRawMutex, _> = Mutex::new(spi);
 
     let drv8323rs = SpiDevice::new(&spi, Output::new(p.PA11, Level::Low, Speed::VeryHigh));
     let mut drv8323rs = Drv8323rs::new(drv8323rs);
-    helpers::driver_setup(&mut drv8323rs);
+    helpers::driver_setup(&mut drv8323rs).await;
 
     let mut uart_config = usart::Config::default();
     uart_config.baudrate = 100_000;
@@ -137,11 +133,11 @@ async fn main(spawner: Spawner) {
 }
 
 #[task]
-async fn get_receiver_data(mut sbus: Sbus<UartRxWrapper<'static, USART2, DMA1_CH3>>) {
+async fn get_receiver_data(mut sbus: Sbus<helpers::UartRxWrapper<'static, USART2, DMA1_CH3>>) {
     loop {
         match sbus.get_packet().await {
             Ok(data) => {
-                debug!("raw: {:#04x}", data.into_bytes());
+                // debug!("raw: {:#04x}", data.into_bytes());
                 debug!(
                     "ch1: {:05}, ch2: {:05}, ch3: {:05}, ch4: {:05}",
                     data.ch1(),
@@ -150,7 +146,7 @@ async fn get_receiver_data(mut sbus: Sbus<UartRxWrapper<'static, USART2, DMA1_CH
                     data.ch4(),
                 );
             }
-            Err(e) => debug!("error happened while reading sbus: {}", e),
+            Err(e) => warn!("error happened while reading sbus: {}", e),
         }
     }
 }

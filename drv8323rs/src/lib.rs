@@ -10,27 +10,24 @@
 #[macro_use]
 extern crate std;
 
-use device_register::{Register, RegisterInterface};
-use embedded_hal::spi::{Operation, SpiDevice};
+#[cfg(feature = "async")]
+mod async_impl;
 
+#[cfg(feature = "async")]
+pub use device_register_async::{EditRegister, ReadRegister, WriteRegister};
+
+#[cfg(not(feature = "async"))]
+mod blocking_impl;
+
+#[cfg(not(feature = "async"))]
 pub use device_register::{EditRegister, ReadRegister, WriteRegister};
 
 pub mod registers;
 
 /// The DRV8323RS. Use `.read()`, `.write()` and `.edit()` functions to access its registers.
-pub struct Drv8323rs<T>
-where
-    T: SpiDevice<u8>,
-{
+pub struct Drv8323rs<T> {
     /// The 4-wire SPI bus
     spi: T,
-}
-
-impl<T: SpiDevice<u8>> Drv8323rs<T> {
-    /// Constructor method
-    pub fn new(spi: T) -> Self {
-        Self { spi }
-    }
 }
 
 /// Internal trait used for `RegisterInterface<R, A>` implementation
@@ -44,40 +41,8 @@ where
     fn to_bytes(self) -> [u8; SIZE];
 }
 
-impl<R, Spi> RegisterInterface<R, u8> for Drv8323rs<Spi>
-where
-    R: Register<Address = u8> + SerializableRegister<2> + Copy,
-    Spi: SpiDevice,
-{
-    type Error = Spi::Error;
-
-    fn read_register(&mut self) -> Result<R, Self::Error> {
-        let mut buf = [0, 0];
-
-        self.spi.transaction(&mut [
-            Operation::Write(&[0x80 | (R::ADDRESS << 3), 0]),
-            Operation::Read(&mut buf),
-        ])?;
-
-        // deserialize
-        Ok(R::from_bytes(buf))
-    }
-
-    fn write_register(&mut self, register: &R) -> Result<(), Self::Error> {
-        // serialize
-        let mut buf = register.to_bytes();
-
-        // add address
-        buf[0] |= R::ADDRESS << 3;
-
-        // issue write command
-        self.spi.write(&buf)
-    }
-}
-
-#[cfg(all(test, not(target_arch = "arm")))]
+#[cfg(all(test, not(target_arch = "arm"), feature = "async"))]
 mod test {
-
     use crate::registers::{Control, PwmMode};
 
     #[test]
