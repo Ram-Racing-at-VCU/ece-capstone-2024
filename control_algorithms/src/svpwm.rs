@@ -1,4 +1,4 @@
-//! SVPWM implementation (will change to be asynchrounous).
+//! SVPWM implementation
 use core::f32::consts::PI;
 #[no_std]
 use micromath::F32Ext;

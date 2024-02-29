@@ -13,7 +13,7 @@ pub fn clarke_transform(input_signal: na::SVector<f32, 3>) -> na::SVector<f32, 2
             -0.5f32,
             0f32,
             3f32.sqrt() / 2f32,
-            3f32.sqrt() / 2f32,
+            -(3f32.sqrt()) / 2f32,
         )
         * input_signal
 }

@@ -6,3 +6,4 @@
 
 pub mod foc;
 pub mod pid;
+pub mod svpwm;
