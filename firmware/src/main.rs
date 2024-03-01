@@ -8,6 +8,12 @@ use sbus::Sbus;
 
 use defmt::*;
 
+use control_algorithms::*;
+
+use nalgebra as na;
+
+use core::f32::consts::PI;
+
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::{task, Spawner};
 use embassy_stm32::{
@@ -123,11 +129,17 @@ async fn main(spawner: Spawner) {
     info!("PWM initialized");
     info!("PWM max duty {}", max);
 
-    let sin = helpers::generate_sin(1000.);
+    // let sin = helpers::generate_sin(1000.);
+
+    let va = helpers::generate_sin(50., 0.);
+    let vb = helpers::generate_sin(50., -2. * PI / 3.);
+    let vc = helpers::generate_sin(50., 2. * PI / 3.);
 
     loop {
-        let x_n = helpers::map_range(sin(), (-1., 1.), (0., 1.));
-        helpers::set_pwm_duty(&mut pwm, x_n, Channel::Ch1);
+        let v_abc = na::SVector::<f32, 3>::new(12. * va(), 12. * vb(), 12. * vc());
+
+        //let x_n = helpers::map_range(sin(), (-1., 1.), (0., 1.));
+        //helpers::set_pwm_duty(&mut pwm, x_n, Channel::Ch1);
         Timer::after_micros(10).await;
     }
 }

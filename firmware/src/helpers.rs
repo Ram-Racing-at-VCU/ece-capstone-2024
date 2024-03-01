@@ -13,10 +13,10 @@ use embassy_stm32::{
 use embassy_time::Instant;
 use micromath::F32Ext;
 
-pub fn generate_sin(frequency: f32) -> impl Fn() -> f32 {
+pub fn generate_sin(frequency: f32, phase: f32) -> impl Fn() -> f32 {
     move || {
         let t = Instant::now().as_micros() as f32 / 1e6;
-        (2. * PI * frequency * t).sin()
+        (2. * PI * frequency * t + phase).sin()
     }
 }
 
