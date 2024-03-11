@@ -83,7 +83,7 @@ async fn main(spawner: Spawner) {
         Some(ch3n),
         None,
         None,
-        time::khz(50),
+        time::khz(100),
         CountingMode::CenterAlignedBothInterrupts,
     );
 
@@ -130,7 +130,7 @@ async fn main(spawner: Spawner) {
     info!("PWM max duty {}", max);
 
     // let sin = helpers::generate_sin(1000.);
-    let frequency: f32 = 50.;
+    let frequency: f32 = 10000.;
     let phase_angle = helpers::generate_angle(frequency);
     let v_a = helpers::generate_cos(frequency, 0.);
     let v_b = helpers::generate_cos(frequency, -2. * PI / 3.);
@@ -140,18 +140,14 @@ async fn main(spawner: Spawner) {
         // let v_abc = na::SVector::<f32, 3>::new(12. * va(), 12. * vb(), 12. * vc());
         // let v_clarke = clarke_transform(v_abc);
 
-        let (v_d, v_q) = dq_transform(v_a() * 2., v_b() * 2., v_c() * 2., phase_angle());
+        let (v_d, v_q) = dq_transform(v_a(), v_b(), v_c(), phase_angle());
         let (v_alpha, v_beta) = inverse_park_transform(v_d, v_q, phase_angle());
+        info!("PWM Period {}", 1. / (pwm.get_period().0 as f32));
         // let v_park = park_transform(v_clarke, phase_angle());
-        let (t_a, t_b, t_c) = svpwm(
-            v_alpha,
-            v_beta,
-            phase_angle(),
-            12.,
-            pwm.get_max_duty() as f32,
-        );
-
-        pwm.set_duty(Channel::Ch1, t_a as u16);
+        let (t_a, t_b, t_c) = svpwm(v_alpha, v_beta, phase_angle(), 4., 1e-4);
+        info!("Phase A time on: {}", t_a);
+        // pwm.set_duty(Channel::Ch1, (t_a / 2e-5) as u16);
+        helpers::set_pwm_duty(&mut pwm, t_a / 1e-4, Channel::Ch1);
 
         // info!(
         //     "t_a: {}, t_b: {}, t_c: {}, Max duty cycle period: {}",

@@ -12,6 +12,7 @@ nalgebra = { version = "0.32.4", default-features = false, features = [
     "macros",
 ] }
 micromath = "2.1.0"
+defmt = { version = "0.3.6" }
 
 [dev-dependencies]
 cortex-m = { version = "0.7.7", features = ["critical-section-single-core"] }
