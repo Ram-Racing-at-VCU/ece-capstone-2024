@@ -3,14 +3,14 @@
 
 mod helpers;
 
+use cortex_m::prelude::_embedded_hal_Pwm;
 use drv8323rs::Drv8323rs;
 use sbus::Sbus;
 
 use defmt::*;
 
-use control_algorithms::*;
-
-use nalgebra as na;
+use control_algorithms::foc::*;
+use control_algorithms::svpwm::*;
 
 use core::f32::consts::PI;
 
@@ -130,13 +130,37 @@ async fn main(spawner: Spawner) {
     info!("PWM max duty {}", max);
 
     // let sin = helpers::generate_sin(1000.);
-
-    let va = helpers::generate_sin(50., 0.);
-    let vb = helpers::generate_sin(50., -2. * PI / 3.);
-    let vc = helpers::generate_sin(50., 2. * PI / 3.);
+    let frequency: f32 = 50.;
+    let phase_angle = helpers::generate_angle(frequency);
+    let v_a = helpers::generate_cos(frequency, 0.);
+    let v_b = helpers::generate_cos(frequency, -2. * PI / 3.);
+    let v_c = helpers::generate_cos(frequency, 2. * PI / 3.);
 
     loop {
-        let v_abc = na::SVector::<f32, 3>::new(12. * va(), 12. * vb(), 12. * vc());
+        // let v_abc = na::SVector::<f32, 3>::new(12. * va(), 12. * vb(), 12. * vc());
+        // let v_clarke = clarke_transform(v_abc);
+
+        let (v_d, v_q) = dq_transform(v_a() * 2., v_b() * 2., v_c() * 2., phase_angle());
+        let (v_alpha, v_beta) = inverse_park_transform(v_d, v_q, phase_angle());
+        // let v_park = park_transform(v_clarke, phase_angle());
+        let (t_a, t_b, t_c) = svpwm(
+            v_alpha,
+            v_beta,
+            phase_angle(),
+            12.,
+            pwm.get_max_duty() as f32,
+        );
+
+        pwm.set_duty(Channel::Ch1, t_a as u16);
+
+        // info!(
+        //     "t_a: {}, t_b: {}, t_c: {}, Max duty cycle period: {}",
+        //     t_a,
+        //     t_b,
+        //     t_c,
+        //     pwm.get_max_duty() as f32
+        // );
+        // let v_clarke_valid = inverse_park_transform(v_park, phase_angle);
 
         //let x_n = helpers::map_range(sin(), (-1., 1.), (0., 1.));
         //helpers::set_pwm_duty(&mut pwm, x_n, Channel::Ch1);

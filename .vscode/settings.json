@@ -27,6 +27,7 @@
     "prediv",
     "repr",
     "sbus",
+    "svpwm",
     "Uart",
     "usart"
   ],
