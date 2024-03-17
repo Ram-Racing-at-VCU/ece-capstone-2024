@@ -137,90 +137,74 @@ impl SerializableRegister<2> for Control {
         Self::into_bytes(self)
     }
 }
-// #[derive(RWRegister)]
-// #[register(addr = 0x03, ty = "u8")]
-// #[bitfield(bytes = 2)]
+#[derive(RWRegister)]
+#[register(addr = 0x03, ty = "u8")]
+#[bitfield(bytes = 2)]
+
+pub struct GateDriveHS {
+    pub lock: bool,
+    /// Gate drive peak source current
+    pub idrivep_hs: bool,
+    /// Gate drive peak sink current
+    pub idriven_hs: bool,
+    /// Gate drive peak source current
+    
+}
+
+impl SerializableRegister<2> for GateDriveHS {
+    fn from_bytes(bytes: [u8; 2]) -> Self {
+        Self::from_bytes(bytes)
+    }
+
+    fn to_bytes(self) -> [u8; 2] {
+        Self::into_bytes(self)
+    }
+}
+
 //
-// pub struct GateDriveHS {
-//     /// Gate drive peak source current
-//     pub idrivep_hs: bool,
-//     /// Gate drive peak sink current
-//     pub idriven_hs: bool,
-//     /// Gate drive peak source current
-//     pub idrivep_ls: bool,
-//     /// Gate drive peak sink current
-//     pub idriven_ls: bool,
-//     /// Gate drive peak source current
-//     pub tdrive: bool,
-//     /// Gate drive peak sink current
-//     pub dead_time: bool,
+#[derive(RWRegister)]
+#[register(addr = 0x04, ty = "u8")]
+#[bitfield(bytes = 2)]
 
-// }
+pub struct GateDriveLS {
+    /// Gate drive peak source current
+    pub cbc: bool,
+    /// Gate drive peak sink current
+    
+    pub idrivep_ls: bool,
+    /// Gate drive peak sink current
+    pub idriven_ls: bool,
+    /// Gate drive peak source current
+    pub tdrive: bool,
+    /// Gate drive peak sink current
+   
+}
 
-// impl SerializableRegister<2> for GateDriveHS {
-//     fn from_bytes(bytes: [u8; 2]) -> Self {
-//         Self::from_bytes(bytes)
-//     }
+impl SerializableRegister<2> for GateDriveLS {
+    fn from_bytes(bytes: [u8; 2]) -> Self {
+        Self::from_bytes(bytes)
+    }
 
-//     fn to_bytes(self) -> [u8; 2] {
-//         Self::into_bytes(self)
-//     }
-// }
+    fn to_bytes(self) -> [u8; 2] {
+        Self::into_bytes(self)
+    }
+}
 
-// //
-// #[derive(RWRegister)]
-// #[register(addr = 0x04, ty = "u8")]
-// #[bitfield(bytes = 2)]
+///
+#[derive(RWRegister)]
+#[register(addr = 0x05, ty = "u8")]
+#[bitfield(bytes = 2)]
+pub struct OCP {
+    #[skip]
+    __: B3,
+    /// Over-current protection mode
+    pub tretry: bool,
+    pub dead_time: bool,
+    pub  ocp_mode : bool,
+    pub ocp_deg: bool,
+    pub vds_lvl: bool,
 
-// pub struct GateDriveLS {
-//     /// Gate drive peak source current
-//     pub idrivep_hs: bool,
-//     /// Gate drive peak sink current
-//     pub idriven_hs: bool,
-//     /// Gate drive peak source current
-//     pub idrivep_ls: bool,
-//     /// Gate drive peak sink current
-//     pub idriven_ls: bool,
-//     /// Gate drive peak source current
-//     pub tdrive: bool,
-//     /// Gate drive peak sink current
-//     pub dead_time: bool,
-// }
-
-// impl SerializableRegister<2> for GateDriveLS {
-//     fn from_bytes(bytes: [u8; 2]) -> Self {
-//         Self::from_bytes(bytes)
-//     }
-
-//     fn to_bytes(self) -> [u8; 2] {
-//         Self::into_bytes(self)
-//     }
-// }
-
-// ///
-// #[derive(RWRegister)]
-// #[register(addr = 0x05, ty = "u8")]
-// #[bitfield(bytes = 2)]
-
-// pub struct OCP {
-//     /// Over-current protection mode
-//     pub ocp_mode: bool,
-//     /// Over-current protection mode
-//     pub ocp_deg: bool,
-//     /// Over-current protection mode
-//     pub t_vds: bool,
-//     /// Over-current protection mode
-//     pub dead_time: bool,
-//     /// Over-current protection mode
-//     pub vds_lvl: bool,
-//     /// Over-current protection mode
-//     pub ocp_retry: bool,
-//     /// Over-current protection mode
-//     pub ocp_dly: bool,
-//     /// Over-current protection mode
-//     pub ocp_brk: bool,
-// }
-
+}
 // impl SerializableRegister<2> for OCP {
 //     fn from_bytes(bytes: [u8; 2]) -> Self {
 //         Self::from_bytes(bytes)
@@ -231,36 +215,32 @@ impl SerializableRegister<2> for Control {
 //     }
 // }
 
-// ///
-// #[derive(RWRegister)]
-// #[register(addr = 0x06, ty = "u8")]
-// #[bitfield(bytes = 2)]
+///
+#[derive(RWRegister)]
+#[register(addr = 0x06, ty = "u8")]
+#[bitfield(bytes = 2)]
 
-// pub struct CSA {
-//     /// Over-current protection mode
-//     pub vref_div: bool,
-//     /// Over-current protection mode
-//     pub ls_ref: bool,
-//     /// Over-current protection mode
-//     pub cs_blank: bool,
-//     /// Over-current protection mode
-//     pub gain: bool,
-//     /// Over-current protection mode
-//     pub dead_time: bool,
-//     /// Over-current protection mode
-//     pub t_vds: bool,
-//     /// Over-current protection mode
-//     pub vds_lvl: bool,
-//     /// Over-current protection mode
-//     pub ocp_retry: bool,
-// }
+pub struct CSA {
+    #[skip]
+    __: B7,
+    pub csa_fet: bool,
+    pub vref_div: bool,
+    pub ls_ref: bool,
+    pub csa_gain: bool,
+    pub dis_sen: bool,
+    pub csa_cal_a: bool,
+    pub csa_cal_b: bool,
+    pub csa_cal_c: bool,
+    pub sen_lvl: bool,
 
-// impl SerializableRegister<2> for CSA {
-//     fn from_bytes(bytes: [u8; 2]) -> Self {
-//         Self::from_bytes(bytes)
-//     }
+}
 
-//     fn to_bytes(self) -> [u8; 2] {
-//         Self::into_bytes(self)
-//     }
-// }
+impl SerializableRegister<2> for CSA {
+    fn from_bytes(bytes: [u8; 2]) -> Self {
+        Self::from_bytes(bytes)
+    }
+
+    fn to_bytes(self) -> [u8; 2] {
+        Self::into_bytes(self)
+    }
+}
