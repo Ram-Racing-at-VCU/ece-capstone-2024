@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use core::f32::consts::PI;
 
 use drv8323rs::{registers as driver_registers, Drv8323rs, EditRegister};

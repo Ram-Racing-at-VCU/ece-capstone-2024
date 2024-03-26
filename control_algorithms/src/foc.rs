@@ -1,7 +1,6 @@
 //! Field-oriented control functions
 
 use micromath::F32Ext;
-use nalgebra as na;
 
 // /// Apply clarke transform to input signal
 // pub fn clarke_transform(input_signal: na::SVector<f32, 3>) -> na::SVector<f32, 2> {
