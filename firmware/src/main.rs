@@ -83,7 +83,7 @@ async fn main(spawner: Spawner) {
         Some(ch3n),
         None,
         None,
-        time::khz(100),
+        time::khz(50),
         CountingMode::CenterAlignedBothInterrupts,
     );
 
@@ -112,11 +112,11 @@ async fn main(spawner: Spawner) {
 
     let sbus = helpers::usart_to_sbus(sbus);
 
-    spawner.spawn(get_receiver_data(sbus)).unwrap();
+    // spawner.spawn(get_receiver_data(sbus)).unwrap();
 
     let _driver_cal = Output::new(p.PB7, Level::Low, Speed::Low);
 
-    let _driver_enable = Output::new(p.PB6, Level::High, Speed::Low);
+    let mut _driver_enable = Output::new(p.PB6, Level::High, Speed::Low);
 
     let _adc_conv = Output::new(p.PA2, Level::Low, Speed::Low);
 
@@ -130,7 +130,7 @@ async fn main(spawner: Spawner) {
     info!("PWM max duty {}", max);
 
     // let sin = helpers::generate_sin(1000.);
-    let frequency: f32 = 10000.;
+    let frequency: f32 = 1000.;
     let phase_angle = helpers::generate_angle(frequency);
     let v_a = helpers::generate_cos(frequency, 0.);
     let v_b = helpers::generate_cos(frequency, -2. * PI / 3.);
@@ -140,14 +140,15 @@ async fn main(spawner: Spawner) {
         // let v_abc = na::SVector::<f32, 3>::new(12. * va(), 12. * vb(), 12. * vc());
         // let v_clarke = clarke_transform(v_abc);
 
-        let (v_d, v_q) = dq_transform(v_a(), v_b(), v_c(), phase_angle());
+        let (v_d, v_q) = dq_transform(10. * v_a(), 10. * v_b(), 10. * v_c(), phase_angle());
         let (v_alpha, v_beta) = inverse_park_transform(v_d, v_q, phase_angle());
-        info!("PWM Period {}", 1. / (pwm.get_period().0 as f32));
         // let v_park = park_transform(v_clarke, phase_angle());
-        let (t_a, t_b, t_c) = svpwm(v_alpha, v_beta, phase_angle(), 4., 1e-4);
-        info!("Phase A time on: {}", t_a);
+        let (t_a, t_b, t_c) = svpwm(v_alpha, v_beta, phase_angle(), 12., 4e-5);
+        _driver_enable.set_high();
+        _driver_enable.set_low();
         // pwm.set_duty(Channel::Ch1, (t_a / 2e-5) as u16);
-        helpers::set_pwm_duty(&mut pwm, t_a / 1e-4, Channel::Ch1);
+        //helpers::set_pwm_duty(&mut pwm, t_a / 4e-5, Channel::Ch1);
+        // info!("Duty Cycle: {}", t_a / 1e-5);
 
         // info!(
         //     "t_a: {}, t_b: {}, t_c: {}, Max duty cycle period: {}",
@@ -160,25 +161,25 @@ async fn main(spawner: Spawner) {
 
         //let x_n = helpers::map_range(sin(), (-1., 1.), (0., 1.));
         //helpers::set_pwm_duty(&mut pwm, x_n, Channel::Ch1);
-        Timer::after_micros(10).await;
+        // Timer::after_micros(10).await;
     }
 }
 
-#[task]
-async fn get_receiver_data(mut sbus: Sbus<helpers::UartRxWrapper<'static, USART2, DMA1_CH3>>) {
-    loop {
-        match sbus.get_packet().await {
-            Ok(data) => {
-                // debug!("raw: {:#04x}", data.into_bytes());
-                debug!(
-                    "ch1: {:05}, ch2: {:05}, ch3: {:05}, ch4: {:05}",
-                    data.ch1(),
-                    data.ch2(),
-                    data.ch3(),
-                    data.ch4(),
-                );
-            }
-            Err(e) => warn!("error happened while reading sbus: {}", e),
-        }
-    }
-}
+// #[task]
+// async fn get_receiver_data(mut sbus: Sbus<helpers::UartRxWrapper<'static, USART2, DMA1_CH3>>) {
+//     loop {
+//         match sbus.get_packet().await {
+//             Ok(data) => {
+//                 // debug!("raw: {:#04x}", data.into_bytes());
+//                 debug!(
+//                     "ch1: {:05}, ch2: {:05}, ch3: {:05}, ch4: {:05}",
+//                     data.ch1(),
+//                     data.ch2(),
+//                     data.ch3(),
+//                     data.ch4(),
+//                 );
+//             }
+//             Err(e) => warn!("error happened while reading sbus: {}", e),
+//         }
+//     }
+// }

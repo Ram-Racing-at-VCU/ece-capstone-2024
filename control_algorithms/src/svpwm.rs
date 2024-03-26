@@ -10,19 +10,37 @@ pub fn svpwm(v_alpha: f32, v_beta: f32, angle: f32, v_dc: f32, ts: f32) -> (f32,
         panic!("Error: Reference Voltage cannot be greater than DC Link Voltage!")
     }
     let modulation_index: f32 = v_reference / v_dc;
-    let mut phase: f32 = angle;
 
-    let mut sector: usize = 1;
-    while phase > PI / 3. {
-        phase -= PI / 3.;
-        sector += 1;
-    }
+    let sector: usize;
+    match angle {
+        angle if 0. < angle && angle <= PI / 3. => {
+            sector = 1;
+        }
+        angle if PI / 3. < angle && angle <= 2. * PI / 3. => {
+            sector = 2;
+        }
+        angle if 2. * PI / 3. < angle && angle <= PI => {
+            sector = 3;
+        }
 
-    defmt::info!("Sector: {}", sector);
+        angle if (PI..=4. * PI / 3.).contains(&angle) => {
+            sector = 4;
+        }
+        angle if 4. * PI / 3. < angle && angle <= 5. * PI / 3. => {
+            sector = 5;
+        }
+        angle if 5. * PI / 3. < angle && angle <= 2. * PI => sector = 6,
+        _ => {
+            panic!("Invalid sector!");
+        }
+    };
 
-    let t1: f32 = 3.0.sqrt() * modulation_index * ts * (PI / 3. - angle).sin();
-    let t2: f32 = modulation_index * ts * 3.0.sqrt() * angle.sin();
-    let t0: f32 = (ts - t1 - t2) / 2.;
+    // defmt::info!("angle = {}", angle);
+    // defmt::info!("sector = {}", sector);
+
+    let t1: f32 = modulation_index * ts * ((sector as f32) * PI / 3. - angle).sin();
+    let t2: f32 = modulation_index * ts * (angle - ((sector - 1) as f32) * PI / 3.).sin();
+    let t0: f32 = ts - t1 - t2;
 
     let t_a: f32;
     let t_b: f32;
@@ -30,39 +48,39 @@ pub fn svpwm(v_alpha: f32, v_beta: f32, angle: f32, v_dc: f32, ts: f32) -> (f32,
 
     match sector {
         1 => {
-            t_a = 0.5 * t0;
-            t_b = 0.5 * t0 + t1;
-            t_c = 0.5 * t0 + t1 + t2;
+            t_a = t0 * 0.5 + t1 + t2;
+            t_b = t0 * 0.5 + t2;
+            t_c = t0 * 0.5;
         }
 
         2 => {
-            t_a = 0.5 * t0 + t2;
-            t_b = 0.5 * t0;
-            t_c = t1 + t2 + t0 * 0.5;
+            t_a = t0 * 0.5 + t1;
+            t_b = t0 * 0.5 + t1 + t2;
+            t_c = t0 * 0.5;
         }
 
         3 => {
-            t_a = t1 + t2 + t0 * 0.5;
-            t_b = 0.5 * t0;
-            t_c = 0.5 * t0 + t1;
+            t_a = t0 * 0.5;
+            t_b = t0 * 0.5 + t1 + t2;
+            t_c = t0 * 0.5 + t2;
         }
 
         4 => {
-            t_a = t1 + t2 + t0 * 0.5;
-            t_b = 0.5 * t0 + t2;
-            t_c = t0 * 0.5;
+            t_a = t0 * 0.5;
+            t_b = t0 * 0.5 + t1;
+            t_c = t0 * 0.5 + t1 + t2;
         }
 
         5 => {
-            t_a = 0.5 * t0 + t1;
-            t_b = t1 + t2 + t0 * 0.5;
-            t_c = t0 * 0.5;
+            t_a = t0 * 0.5 + t2;
+            t_b = t0 * 0.5;
+            t_c = t0 * 0.5 + t1 + t2;
         }
 
         6 => {
-            t_a = t0 * 0.5;
-            t_b = t1 + t2 + t0 * 0.5;
-            t_c = 0.5 * t0 + t2;
+            t_a = t0 * 0.5 + t1 + t2;
+            t_b = t0 * 0.5;
+            t_c = t0 * 0.5 + t1;
         }
 
         _ => {
