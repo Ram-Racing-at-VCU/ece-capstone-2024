@@ -4,35 +4,36 @@ use device_register::{RORegister, RWRegister};
 use modular_bitfield_msb::prelude::*;
 
 use crate::SerializableRegister;
-
-/// The status registers are used to reporting warning and fault conditions.
+// The status registers are used to reporting warning and fault conditions.
 #[derive(RORegister, Clone, Copy)]
 #[register(addr = 0x00, ty = "u8")]
 #[bitfield(bytes = 2)]
+/// The status registers are used to reporting warning and fault conditions.
 pub struct Status1 {
+    
     #[skip]
     __: B5,
-    /// Logic OR of FAULT status registers. Mirrors nFAULT pin.
+    // Logic OR of FAULT status registers. Mirrors nFAULT pin.
     pub fault: bool,
-    /// Indicates VDS monitor over-current fault condition
+    // Indicates VDS monitor over-current fault condition
     pub vds_ocp: bool,
-    /// Indicates gate drive fault condition
+    // Indicates gate drive fault condition
     pub gdf: bool,
-    /// Indicates under-voltage lockout fault condition
+    // Indicates under-voltage lockout fault condition
     pub uvlo: bool,
-    /// Indicates over-temperature shutdown
+    // Indicates over-temperature shutdown
     pub otsd: bool,
-    /// Indicates VDS over-current fault on the A high-side MOSFET
+    // Indicates VDS over-current fault on the A high-side MOSFET
     pub vds_ha: bool,
-    /// Indicates VDS over-current fault on the A low-side MOSFET
+    // Indicates VDS over-current fault on the A low-side MOSFET
     pub vds_la: bool,
-    /// Indicates VDS over-current fault on the B high-side MOSFET
+    // Indicates VDS over-current fault on the B high-side MOSFET
     pub vds_hb: bool,
-    /// Indicates VDS over-current fault on the B high-side MOSFET
+    // Indicates VDS over-current fault on the B high-side MOSFET
     pub vds_lb: bool,
-    /// Indicates VDS over-current fault on the C high-side MOSFET
+    // Indicates VDS over-current fault on the C high-side MOSFET
     pub vds_hc: bool,
-    /// Indicates VDS over-current fault on the C high-side MOSFET
+    // Indicates VDS over-current fault on the C high-side MOSFET
     pub vds_lc: bool,
 }
 
@@ -46,34 +47,34 @@ impl SerializableRegister<2> for Status1 {
     }
 }
 
-/// The status registers are used to reporting warning and fault conditions.
 #[derive(RORegister, Clone, Copy)]
 #[register(addr = 0x01, ty = "u8")]
 #[bitfield(bytes = 2)]
+/// The status registers are used to reporting warning and fault conditions.
 pub struct Status2 {
     #[skip]
     __: B5,
-    /// Indicates over-current on phase A sense amplifier
+    // Indicates over-current on phase A sense amplifier
     pub sa_oc: bool,
-    /// Indicates over-current on phase B sense amplifier
+    // Indicates over-current on phase B sense amplifier
     pub sb_oc: bool,
-    /// Indicates over-current on phase C sense amplifier
+    // Indicates over-current on phase C sense amplifier
     pub sc_oc: bool,
-    /// Indicates over-temperature warning
+    // Indicates over-temperature warning
     pub otw: bool,
-    /// Indicates charge pump under-voltage fault condition
+    // Indicates charge pump under-voltage fault condition
     pub cp_uv: bool,
-    /// Indicates gate drive fault on the A high-side MOSFET
+    // Indicates gate drive fault on the A high-side MOSFET
     pub vgs_ha: bool,
-    /// Indicates gate drive fault on the A low-side MOSFET
+    // Indicates gate drive fault on the A low-side MOSFET
     pub vgs_la: bool,
-    /// Indicates gate drive fault on the B high-side MOSFET
+    // Indicates gate drive fault on the B high-side MOSFET
     pub vgs_hb: bool,
-    /// Indicates gate drive fault on the B low-side MOSFET
+    // Indicates gate drive fault on the B low-side MOSFET
     pub vgs_lb: bool,
-    /// Indicates gate drive fault on the C high-side MOSFET
+    // Indicates gate drive fault on the C high-side MOSFET
     pub vgs_hc: bool,
-    /// Indicates gate drive fault on the C low-side MOSFET
+    // Indicates gate drive fault on the C low-side MOSFET
     pub vgs_lc: bool,
 }
 
@@ -87,9 +88,10 @@ impl SerializableRegister<2> for Status2 {
     }
 }
 
-/// Available PWM modes on the DRV8323RS. Part of the `Control` register.
+// Available PWM modes on the DRV8323RS. Part of the `Control` register.
 #[derive(BitfieldSpecifier, Clone, Copy, Debug)]
 #[bits = 2]
+/// Available PWM modes on the DRV8323RS. Part of the `Control` register.
 pub enum PwmMode {
     /// 6x PWM Mode
     _6x = 0b00,
@@ -101,30 +103,31 @@ pub enum PwmMode {
     Independent = 0b11,
 }
 
-/// The status registers are used to reporting warning and fault conditions.
+// The status registers are used to reporting warning and fault conditions.
 #[derive(RWRegister, Clone, Copy)]
 #[register(addr = 0x02, ty = "u8")]
 #[bitfield(bytes = 2)]
+/// The control register is used to configure the DRV8323RS.
 pub struct Control {
     #[skip]
     __: B6,
-    /// Charge pump disable
+    // Charge pump disable
     pub dis_cpuv: bool,
-    /// Gate drive disable
+    // Gate drive disable
     pub dis_gdf: bool,
-    /// Over-temperature report enable
+    // Over-temperature report enable
     pub otw_rep: bool,
-    /// PWM mode
+    // PWM mode
     pub pwm_mode: PwmMode,
-    /// 1x PWM mode asynchronous rectification (diode freewheeling) enable
+    // 1x PWM mode asynchronous rectification (diode freewheeling) enable
     pub single_pwm_com: bool,
-    /// In 1x PWM mode, this bit is ORed with the INHC (DIR) input
+    // In 1x PWM mode, this bit is ORed with the INHC (DIR) input
     pub single_pwm_dir: bool,
-    /// Coast enable. Puts all MOSFETs in the Hi-Z state
+    // Coast enable. Puts all MOSFETs in the Hi-Z state
     pub coast: bool,
-    /// Break enable. Turns on all low-side MOSFETs.
+    // Break enable. Turns on all low-side MOSFETs.
     pub brake: bool,
-    /// Clear latched fault bits. This is automatically reset after being written.
+    // Clear latched fault bits. This is automatically reset after being written.
     pub clr_flt: bool,
 }
 
@@ -140,14 +143,18 @@ impl SerializableRegister<2> for Control {
 #[derive(RWRegister)]
 #[register(addr = 0x03, ty = "u8")]
 #[bitfield(bytes = 2)]
-
+/// the gate drive high side register is used to configure the DRV8323RS
 pub struct GateDriveHS {
+    #[skip]
+    __: B13,
     pub lock: bool,
-    /// Gate drive peak source current
+    // Gate drive peak source current
     pub idrivep_hs: bool,
-    /// Gate drive peak sink current
+    // Gate drive peak sink current
     pub idriven_hs: bool,
-    /// Gate drive peak source current
+    // Gate drive peak source current
+    
+    
     
 }
 
@@ -165,18 +172,20 @@ impl SerializableRegister<2> for GateDriveHS {
 #[derive(RWRegister)]
 #[register(addr = 0x04, ty = "u8")]
 #[bitfield(bytes = 2)]
-
+/// the gate drive low side register is used to configure the DRV8323RS
 pub struct GateDriveLS {
-    /// Gate drive peak source current
+    #[skip] 
+    __: B12,
+    // Gate drive peak source current
     pub cbc: bool,
-    /// Gate drive peak sink current
+    // Gate drive peak sink current
     
     pub idrivep_ls: bool,
-    /// Gate drive peak sink current
+    // Gate drive peak sink current
     pub idriven_ls: bool,
-    /// Gate drive peak source current
+    // Gate drive peak source current
     pub tdrive: bool,
-    /// Gate drive peak sink current
+    // Gate drive peak sink current
    
 }
 
@@ -190,47 +199,65 @@ impl SerializableRegister<2> for GateDriveLS {
     }
 }
 
-///
+//
+
 #[derive(RWRegister)]
 #[register(addr = 0x05, ty = "u8")]
 #[bitfield(bytes = 2)]
+
+/// the OCP register is used to protect the DRV8323RS in case of over-current
 pub struct OCP {
     #[skip]
-    __: B3,
-    /// Over-current protection mode
+    __: B11,
+    // Over-current protection mode
     pub tretry: bool,
+    //0b = VDS_OCP and SEN_OCP retry time is 4 ms
     pub dead_time: bool,
+    //01b = 100-ns dead time
     pub  ocp_mode : bool,
+    // 01b = Ov ercurrent causes an automatic retrying fault
     pub ocp_deg: bool,
+    // 0b = OCP deglitch time is 4 ms
     pub vds_lvl: bool,
+    //1001b = 0.75 V
 
 }
-// impl SerializableRegister<2> for OCP {
-//     fn from_bytes(bytes: [u8; 2]) -> Self {
-//         Self::from_bytes(bytes)
-//     }
 
-//     fn to_bytes(self) -> [u8; 2] {
-//         Self::into_bytes(self)
-//     }
-// }
+//
+impl SerializableRegister<2> for OCP {
+    fn from_bytes(bytes: [u8; 2]) -> Self {
+        Self::from_bytes(bytes)
+    }
 
-///
+    fn to_bytes(self) -> [u8; 2] {
+        Self::into_bytes(self)
+    }
+}
+
+//
 #[derive(RWRegister)]
 #[register(addr = 0x06, ty = "u8")]
 #[bitfield(bytes = 2)]
-
+/// the CSA register is used to configure the current sense amplifier
 pub struct CSA {
     #[skip]
     __: B7,
     pub csa_fet: bool,
+    //Current sense amplifier positiv e input is SPx
     pub vref_div: bool,
+    //Current sense amplifier reference voltage is VREF divided by 2
     pub ls_ref: bool,
+    //= VDS_OCP for the low-side MOSFET is measured across SHx to SPx
     pub csa_gain: bool,
+    //10b = 20-V/V current sense amplifier gain
     pub dis_sen: bool,
+    // 0b = Sense ov ercurrent fault is enabled
     pub csa_cal_a: bool,
+    //0b = Normal current sense amplifier A operation
     pub csa_cal_b: bool,
+    // 0b = Normal current sense amplifier B operation
     pub csa_cal_c: bool,
+    // 0b = Normal current sense amplifier C operation
     pub sen_lvl: bool,
 
 }
