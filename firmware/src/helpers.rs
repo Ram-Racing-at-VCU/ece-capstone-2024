@@ -45,7 +45,7 @@ pub async fn driver_setup<T: embedded_hal_async::spi::SpiDevice<u8>>(driver: &mu
     // replace with actual setup code later...
 
     driver
-        .edit(|r: &mut driver_registers::Control| {
+        .edit(|r: &mut driver_registers::DriveControl| {
             r.set_pwm_mode(driver_registers::PwmMode::_3x);
             r.set_brake(false);
             debug!("control: {}", r.into_bytes());
