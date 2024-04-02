@@ -3,9 +3,11 @@
 
 mod helpers;
 
+use embassy_time::Timer;
 use ltc1408_12::Ltc1408_12;
 
 use defmt::*;
+use micromath::F32Ext;
 
 use embassy_executor::Spawner;
 use embassy_stm32::{
@@ -58,13 +60,21 @@ async fn main(_spawner: Spawner) {
     let mut adc_conv = Output::new(p.PA2, Level::Low, Speed::Low);
 
     loop {
+        // trigger conversion
         adc_conv.set_high();
         adc_conv.set_low();
 
-        let data = adc.read().await.unwrap()[0];
+        // read data
+        let adc_data = adc.read().await.unwrap();
 
-        let data = (data - 1.24) / 2.0;
+        // assign variables & apply scaling
+        let alpha = (adc_data[0] - 1.24) / 2.0;
+        let beta = (adc_data[1] - 1.24) / 2.0;
+        let angle = f32::atan2(alpha, beta) * (180.0 / core::f32::consts::PI);
 
-        info!("Got ADC data: {:?}", data);
+        // print output
+        info!("Got alpha: {}, beta: {}, angle: {}", alpha, beta, angle);
+
+        Timer::after_millis(50).await;
     }
 }
