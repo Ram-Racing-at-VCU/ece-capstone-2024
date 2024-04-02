@@ -4,35 +4,35 @@ use device_register::{RORegister, RWRegister};
 use modular_bitfield_msb::prelude::*;
 
 use crate::SerializableRegister;
-// The status registers are used to reporting warning and fault conditions.
+
+/// The status registers are used to reporting warning and fault conditions.
 #[derive(RORegister, Clone, Copy)]
 #[register(addr = 0x00, ty = "u8")]
 #[bitfield(bytes = 2)]
-/// The status registers are used to reporting warning and fault conditions.
 pub struct Status1 {
     #[skip]
     __: B5,
-    // Logic OR of FAULT status registers. Mirrors nFAULT pin.
+    /// Logic OR of FAULT status registers. Mirrors nFAULT pin.
     pub fault: bool,
-    // Indicates VDS monitor over-current fault condition
+    /// Indicates VDS monitor over-current fault condition
     pub vds_ocp: bool,
-    // Indicates gate drive fault condition
+    /// Indicates gate drive fault condition
     pub gdf: bool,
-    // Indicates under-voltage lockout fault condition
+    /// Indicates under-voltage lockout fault condition
     pub uvlo: bool,
-    // Indicates over-temperature shutdown
+    /// Indicates over-temperature shutdown
     pub otsd: bool,
-    // Indicates VDS over-current fault on the A high-side MOSFET
+    /// Indicates VDS over-current fault on the A high-side MOSFET
     pub vds_ha: bool,
-    // Indicates VDS over-current fault on the A low-side MOSFET
+    /// Indicates VDS over-current fault on the A low-side MOSFET
     pub vds_la: bool,
-    // Indicates VDS over-current fault on the B high-side MOSFET
+    /// Indicates VDS over-current fault on the B high-side MOSFET
     pub vds_hb: bool,
-    // Indicates VDS over-current fault on the B high-side MOSFET
+    /// Indicates VDS over-current fault on the B high-side MOSFET
     pub vds_lb: bool,
-    // Indicates VDS over-current fault on the C high-side MOSFET
+    /// Indicates VDS over-current fault on the C high-side MOSFET
     pub vds_hc: bool,
-    // Indicates VDS over-current fault on the C high-side MOSFET
+    /// Indicates VDS over-current fault on the C high-side MOSFET
     pub vds_lc: bool,
 }
 
@@ -46,34 +46,34 @@ impl SerializableRegister<2> for Status1 {
     }
 }
 
+/// The status registers are used to reporting warning and fault conditions.
 #[derive(RORegister, Clone, Copy)]
 #[register(addr = 0x01, ty = "u8")]
 #[bitfield(bytes = 2)]
-/// The status registers are used to reporting warning and fault conditions.
 pub struct Status2 {
     #[skip]
     __: B5,
-    // Indicates over-current on phase A sense amplifier
+    /// Indicates over-current on phase A sense amplifier
     pub sa_oc: bool,
-    // Indicates over-current on phase B sense amplifier
+    /// Indicates over-current on phase B sense amplifier
     pub sb_oc: bool,
-    // Indicates over-current on phase C sense amplifier
+    /// Indicates over-current on phase C sense amplifier
     pub sc_oc: bool,
-    // Indicates over-temperature warning
+    /// Indicates over-temperature warning
     pub otw: bool,
-    // Indicates charge pump under-voltage fault condition
+    /// Indicates charge pump under-voltage fault condition
     pub cp_uv: bool,
-    // Indicates gate drive fault on the A high-side MOSFET
+    /// Indicates gate drive fault on the A high-side MOSFET
     pub vgs_ha: bool,
-    // Indicates gate drive fault on the A low-side MOSFET
+    /// Indicates gate drive fault on the A low-side MOSFET
     pub vgs_la: bool,
-    // Indicates gate drive fault on the B high-side MOSFET
+    /// Indicates gate drive fault on the B high-side MOSFET
     pub vgs_hb: bool,
-    // Indicates gate drive fault on the B low-side MOSFET
+    /// Indicates gate drive fault on the B low-side MOSFET
     pub vgs_lb: bool,
-    // Indicates gate drive fault on the C high-side MOSFET
+    /// Indicates gate drive fault on the C high-side MOSFET
     pub vgs_hc: bool,
-    // Indicates gate drive fault on the C low-side MOSFET
+    /// Indicates gate drive fault on the C low-side MOSFET
     pub vgs_lc: bool,
 }
 
@@ -87,10 +87,9 @@ impl SerializableRegister<2> for Status2 {
     }
 }
 
-// Available PWM modes on the DRV8323RS. Part of the `Control` register.
+/// Available PWM modes on the DRV8323RS. Part of the [DriveControl] register.
 #[derive(BitfieldSpecifier, Clone, Copy, Debug)]
 #[bits = 2]
-/// Available PWM modes on the DRV8323RS. Part of the `Control` register.
 pub enum PwmMode {
     /// 6x PWM Mode
     _6x = 0b00,
@@ -102,31 +101,30 @@ pub enum PwmMode {
     Independent = 0b11,
 }
 
-// The status registers are used to reporting warning and fault conditions.
+/// The control register is used to configure the DRV8323RS.
 #[derive(RWRegister, Clone, Copy)]
 #[register(addr = 0x02, ty = "u8")]
 #[bitfield(bytes = 2)]
-/// The control register is used to configure the DRV8323RS.
 pub struct DriveControl {
     #[skip]
     __: B6,
-    // Charge pump disable
+    /// Charge pump disable
     pub dis_cpuv: bool,
-    // Gate drive disable
+    /// Gate drive disable
     pub dis_gdf: bool,
-    // Over-temperature report enable
+    /// Over-temperature report enable
     pub otw_rep: bool,
-    // PWM mode
+    /// PWM mode
     pub pwm_mode: PwmMode,
-    // 1x PWM mode asynchronous rectification (diode freewheeling) enable
+    /// 1x PWM mode asynchronous rectification (diode freewheeling) enable
     pub single_pwm_com: bool,
-    // In 1x PWM mode, this bit is ORed with the INHC (DIR) input
+    /// In 1x PWM mode, this bit is ORed with the INHC (DIR) input
     pub single_pwm_dir: bool,
-    // Coast enable. Puts all MOSFETs in the Hi-Z state
+    /// Coast enable. Puts all MOSFETs in the Hi-Z state
     pub coast: bool,
-    // Break enable. Turns on all low-side MOSFETs.
+    /// Break enable. Turns on all low-side MOSFETs.
     pub brake: bool,
-    // Clear latched fault bits. This is automatically reset after being written.
+    /// Clear latched fault bits. This is automatically reset after being written.
     pub clr_flt: bool,
 }
 
@@ -140,7 +138,7 @@ impl SerializableRegister<2> for DriveControl {
     }
 }
 
-/// Register lock enable
+/// Register lock enable. Part of the [GateHs] register.
 #[derive(BitfieldSpecifier, Clone, Copy, Debug)]
 #[bits = 3]
 pub enum Lock {
@@ -150,7 +148,7 @@ pub enum Lock {
     Unlock = 0b011,
 }
 
-/// Gate drive source current (Max: 1A)
+/// Gate drive source current (Max: 1A). Part of the [GateHs] and [GateLs] registers.
 #[derive(BitfieldSpecifier, Clone, Copy, Debug)]
 #[bits = 4]
 pub enum SourceCurrent {
@@ -188,7 +186,7 @@ pub enum SourceCurrent {
     _1000 = 0b1111,
 }
 
-/// Gate drive sink current (Max: 2A)
+/// Gate drive sink current (Max: 2A). Part of the [GateHs] and [GateLs] registers.
 #[derive(BitfieldSpecifier, Clone, Copy, Debug)]
 #[bits = 4]
 pub enum SinkCurrent {
@@ -251,7 +249,7 @@ impl SerializableRegister<2> for GateHs {
     }
 }
 
-/// Peak drive time
+/// Peak drive time. Part of the [GateLs] register.
 #[derive(BitfieldSpecifier, Clone, Copy, Debug)]
 #[bits = 2]
 pub enum TDrive {
@@ -293,7 +291,7 @@ impl SerializableRegister<2> for GateLs {
     }
 }
 
-/// Retry time
+/// Retry time. Part of the [OcpControl] register.
 #[derive(BitfieldSpecifier, Clone, Copy, Debug)]
 #[bits = 1]
 pub enum TRetry {
@@ -303,7 +301,7 @@ pub enum TRetry {
     _50us = 0b1,
 }
 
-/// Dead time
+/// Dead time. Part of the [OcpControl] register.
 #[derive(BitfieldSpecifier, Clone, Copy, Debug)]
 #[bits = 2]
 pub enum DeadTime {
@@ -317,7 +315,7 @@ pub enum DeadTime {
     _400 = 0b11,
 }
 
-/// Over-current protection mode
+/// Over-current protection mode. Part of the [OcpControl] register.
 #[derive(BitfieldSpecifier, Clone, Copy, Debug)]
 #[bits = 2]
 pub enum OcpMode {
@@ -331,7 +329,7 @@ pub enum OcpMode {
     Ignore = 0b11,
 }
 
-/// Deglitch time
+/// Deglitch time. Part of the [OcpControl] register.
 #[derive(BitfieldSpecifier, Clone, Copy, Debug)]
 #[bits = 2]
 pub enum DeglitchTime {
@@ -345,7 +343,7 @@ pub enum DeglitchTime {
     _8 = 0b11,
 }
 
-/// V_DS level
+/// V_DS level. Part of the [OcpControl] register.
 #[derive(BitfieldSpecifier, Clone, Copy, Debug)]
 #[bits = 4]
 pub enum VdsLevel {
@@ -412,7 +410,7 @@ impl SerializableRegister<2> for OcpControl {
     }
 }
 
-/// Current sense amplifier gain
+/// Current sense amplifier gain. Part of the [CsaControl] register.
 #[derive(BitfieldSpecifier, Clone, Copy, Debug)]
 #[bits = 2]
 pub enum CsaGain {
@@ -426,7 +424,7 @@ pub enum CsaGain {
     _40 = 0b11,
 }
 
-/// Current sense amplifier over-current protection level
+/// Current sense amplifier over-current protection level. Part of the [CsaControl] register.
 #[derive(BitfieldSpecifier, Clone, Copy, Debug)]
 #[bits = 2]
 pub enum SenLevel {
