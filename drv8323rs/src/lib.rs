@@ -43,7 +43,7 @@ where
 
 #[cfg(all(test, not(target_arch = "arm"), feature = "async"))]
 mod test {
-    use crate::registers::{Control, PwmMode};
+    use crate::registers::{DriveControl, PwmMode};
 
     #[test]
     fn test_bit_pattern() {
