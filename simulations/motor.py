@@ -2,6 +2,7 @@ import numpy as np
 from dataclasses import dataclass
 from typing import Tuple
 from numpy.typing import ArrayLike
+from controller import *
 
 @dataclass
 class DCMotorConfig:
@@ -65,19 +66,40 @@ def rk2_step(dyn_func: callable,
         f2 = dyn_func(x + f1 * delta_t / 2, u_func(t) + delta_t / 2)
         return x + f2*delta_t
 
-def simulate(plant: DCMotor,
-             controller,
-             x_0: ArrayLike,
-             t_0: float,
-             t_f: float,
-             delta_t: float,
-             C: ArrayLike) -> Tuple:
+def simulate_pid(plant: DCMotor,
+                controller: PIDController,
+                x_0: ArrayLike,
+                t_0: float,
+                t_f: float,
+                delta_t: float,
+                C: ArrayLike) -> Tuple:
         
         t = np.arange(t_0, t_f, delta_t)
         x = [[[x_0[0]], [x_0[1]], [x_0[2]]]]
+        u = [0]
 
         for i, t_curr in enumerate(t[:-1]):
-                u_func = lambda t, measurement = plant.output(x[i], C): controller(measurement)
+                u_func = lambda t_curr, measurement = plant.output(x[i], C): controller(measurement, t_curr)
                 x.append(rk2_step(plant.dynamics, u_func, x[i], t_curr, delta_t))
+                u.append(u_func(t_curr)[0][0])
 
-        return (t, plant.output(x, C))
+        return (t, plant.output(x, C), u)
+
+def simulate_lqr(plant: DCMotor,
+                controller: StateFeedbackRegulator,
+                x_0: ArrayLike,
+                t_0: float,
+                t_f: float,
+                delta_t: float,
+                C: ArrayLike) -> Tuple:
+        
+        t = np.arange(t_0, t_f, delta_t)
+        x = [[[x_0[0]], [x_0[1]], [x_0[2]]]]
+        u = [0]
+
+        for i, t_curr in enumerate(t[:-1]):
+                u_func = lambda t_curr, state = x[i]: controller(state, t_curr)
+                x.append(rk2_step(plant.dynamics, u_func, x[i], t_curr, delta_t))
+                u.append(u_func(t_curr)[0][0])
+
+        return (t, plant.output(x, C), u)
