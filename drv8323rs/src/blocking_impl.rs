@@ -1,7 +1,7 @@
 //! Blocking version of the register traits
 
 use device_register::{Register, RegisterInterface};
-use embedded_hal::spi::{Operation, SpiDevice};
+use embedded_hal::spi::SpiDevice;
 
 use crate::{Drv8323rs, SerializableRegister};
 
@@ -20,12 +20,16 @@ where
     type Error = Spi::Error;
 
     fn read_register(&mut self) -> Result<R, Self::Error> {
-        let mut buf = [0, 0];
+        let mut buf = [0x80 | (R::ADDRESS << 3), 0];
 
-        self.spi.transaction(&mut [
-            Operation::Write(&[0x80 | (R::ADDRESS << 3), 0]),
-            Operation::Read(&mut buf),
-        ])?;
+        /* Half-duplex communication */
+        // self.spi.transaction(&mut [
+        //     Operation::Write(&[0x80 | (R::ADDRESS << 3), 0]),
+        //     Operation::Read(&mut buf),
+        // ])?;
+
+        /* Full-duplex communication */
+        self.spi.transfer_in_place(&mut buf)?;
 
         // deserialize
         Ok(R::from_bytes(buf))
