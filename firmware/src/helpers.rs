@@ -7,7 +7,9 @@ use sbus::Sbus;
 
 use defmt::debug;
 use embassy_stm32::{
-    timer::{complementary_pwm::ComplementaryPwm, AdvancedInstance4Channel, Channel},
+    timer::{
+        complementary_pwm::ComplementaryPwm, Channel, ComplementaryCaptureCompare16bitInstance,
+    },
     usart::{self, UartRx},
 };
 use embassy_time::Instant;
@@ -33,7 +35,7 @@ pub fn map_range(val: f32, before: (f32, f32), after: (f32, f32)) -> f32 {
 
 pub fn set_pwm_duty<T>(pwm: &mut ComplementaryPwm<T>, frac: f32, channel: Channel)
 where
-    T: AdvancedInstance4Channel,
+    T: ComplementaryCaptureCompare16bitInstance,
 {
     let max = pwm.get_max_duty() as f32;
     let duty = (max * frac) as u16;
