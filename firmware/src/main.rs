@@ -42,12 +42,12 @@ fn panic() -> ! {
     panic_probe::hard_fault()
 }
 
-// bind USART interrupt
-embassy_stm32::bind_interrupts!(struct Irqs {
-    USART2 => usart::InterruptHandler<peripherals::USART2>;
-});
-
 #[embassy_executor::main]
+
+// bind USART interrupt
+// embassy_stm32::bind_interrupts!(struct Irqs {
+//     USART2 => usart::InterruptHandler<peripherals::USART2>;
+// });
 async fn main(spawner: Spawner) {
     let mut config = Config::default();
 
@@ -108,9 +108,9 @@ async fn main(spawner: Spawner) {
     uart_config.parity = Parity::ParityEven;
     uart_config.invert_rx = true;
 
-    let sbus = UartRx::new(p.USART2, Irqs, p.PA3, p.DMA1_CH3, uart_config).unwrap();
+    // let sbus = UartRx::new(p.USART2, Irqs, p.PA3, p.DMA1_CH3, uart_config).unwrap();
 
-    let sbus = helpers::usart_to_sbus(sbus);
+    // let sbus = helpers::usart_to_sbus(sbus);
 
     // spawner.spawn(get_receiver_data(sbus)).unwrap();
 
@@ -147,7 +147,7 @@ async fn main(spawner: Spawner) {
         _driver_enable.set_high();
         _driver_enable.set_low();
         // pwm.set_duty(Channel::Ch1, (t_a / 2e-5) as u16);
-        //helpers::set_pwm_duty(&mut pwm, t_a / 4e-5, Channel::Ch1);
+        helpers::set_pwm_duty(&mut pwm, t_a / 4e-5, Channel::Ch1);
         // info!("Duty Cycle: {}", t_a / 1e-5);
 
         // info!(
