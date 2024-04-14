@@ -1,21 +1,27 @@
 #![no_std]
 #![no_main]
 
+mod consts;
+mod driver;
 mod helpers;
 
-use drv8323rs::{registers::*, Drv8323rs, ReadRegister};
+use consts::SPI_FREQUENCY;
+use driver::{check_driver, report_status, setup_driver};
+
+use drv8323rs::Drv8323rs;
 // use ltc1408_12::Ltc1408_12;
 
-use defmt::*;
+use defmt::assert;
 // use micromath::F32Ext;
 
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::Spawner;
 use embassy_stm32::{
-    gpio::{Level, Output, Speed},
+    exti::ExtiInput,
+    gpio::{Input, Level, Output, Pull, Speed},
     rcc,
     spi::{self, Spi},
-    time, Config,
+    Config,
 };
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
 use embassy_time::Timer;
@@ -49,39 +55,46 @@ async fn main(_spawner: Spawner) {
 
     let p = embassy_stm32::init(config);
 
-    info!("Initialized system!");
+    /* SPI Bus */
 
     let mut spi_config = spi::Config::default();
-    spi_config.frequency = time::mhz(1);
+    spi_config.frequency = SPI_FREQUENCY;
     spi_config.mode = spi::MODE_1;
 
     let spi = Spi::new(
         p.SPI1, p.PB3, p.PB5, p.PB4, p.DMA1_CH1, p.DMA1_CH2, spi_config,
     );
 
-    /* DRV stuff */
-
     let spi_bus: Mutex<NoopRawMutex, _> = Mutex::new(spi);
+
+    /* DRV stuff */
 
     let drv_cs = Output::new(p.PA11, Level::High, Speed::VeryHigh);
     let drv = SpiDevice::new(&spi_bus, drv_cs);
     let mut drv = Drv8323rs::new(drv);
     let mut drv_enable = Output::new(p.PB6, Level::Low, Speed::VeryHigh);
+    let n_fault = Input::new(p.PB0, Pull::Up);
+    let mut n_fault = ExtiInput::new(n_fault, p.EXTI0);
 
     drv_enable.set_high();
-    Timer::after_millis(100).await;
+    Timer::after_millis(2).await;
 
-    let mut successes = 0;
-    for _ in 0..10000 {
-        let register: GateHs = drv.read().await.unwrap();
-        if register.into_bytes() == [0x03, 0xFF] {
-            successes += 1;
-        }
-    }
+    assert!(
+        check_driver(&mut drv).await.unwrap(),
+        "DRV did not function correctly!"
+    );
 
-    info!("Success Rate: {}%", successes as f32 / 100.0);
+    setup_driver(&mut drv).await.unwrap();
+
+    // nFAULT handler
+    // todo: make this into a task (requires a static reference to the SPI bus)
+    n_fault.wait_for_low().await;
+    report_status(&mut drv).await.unwrap();
+    panic!("Shutting down because of DRV error");
 
     /* ADC stuff */
+
+    // todo: make this share the bus with the DRV somehow
 
     // let mut adc = Ltc1408_12::new(spi, 5).unwrap();
 

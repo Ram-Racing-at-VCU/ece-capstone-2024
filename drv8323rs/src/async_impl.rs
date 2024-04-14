@@ -23,16 +23,10 @@ where
     async fn read_register(&mut self) -> Result<R, Self::Error> {
         let mut buf = [0x80 | (R::ADDRESS << 3), 0];
 
-        /* Half-duplex communication */
-        // self.spi
-        //     .transaction(&mut [
-        //         Operation::Write(&[0x80 | (R::ADDRESS << 3), 0]),
-        //         Operation::Read(&mut buf),
-        //     ])
-        //     .await?;
-
-        /* Full-duplex communication */
         self.spi.transfer_in_place(&mut buf).await?;
+
+        // remove don't-cares
+        buf[0] &= 0x07;
 
         // deserialize
         Ok(R::from_bytes(buf))

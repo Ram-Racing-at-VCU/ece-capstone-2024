@@ -2,10 +2,8 @@
 
 use core::f32::consts::PI;
 
-use drv8323rs::{registers as driver_registers, Drv8323rs, EditRegister};
 use sbus::Sbus;
 
-use defmt::debug;
 use embassy_stm32::{
     timer::{
         complementary_pwm::ComplementaryPwm, Channel, ComplementaryCaptureCompare16bitInstance,
@@ -40,20 +38,6 @@ where
     let max = pwm.get_max_duty() as f32;
     let duty = (max * frac) as u16;
     pwm.set_duty(channel, duty);
-}
-
-pub async fn driver_setup<T: embedded_hal_async::spi::SpiDevice<u8>>(driver: &mut Drv8323rs<T>) {
-    // note: this is placeholder code just to test the SPI bus
-    // replace with actual setup code later...
-
-    driver
-        .edit(|r: &mut driver_registers::DriveControl| {
-            r.set_pwm_mode(driver_registers::PwmMode::_3x);
-            r.set_brake(false);
-            debug!("control: {}", r.into_bytes());
-        })
-        .await
-        .unwrap();
 }
 
 pub struct UartRxWrapper<'d, T: usart::BasicInstance, RxDma: usart::RxDma<T>> {
