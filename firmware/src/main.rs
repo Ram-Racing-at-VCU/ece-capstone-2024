@@ -5,22 +5,30 @@ mod consts;
 mod driver;
 mod helpers;
 
-use consts::SPI_FREQUENCY;
+use core::f32::consts::PI;
+
+use consts::{PWM_FREQUENCY, SPI_FREQUENCY};
 use driver::{check_driver, report_status, setup_driver};
 
 use drv8323rs::Drv8323rs;
 // use ltc1408_12::Ltc1408_12;
 
-use defmt::assert;
+use defmt::{assert, info, println};
 // use micromath::F32Ext;
 
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
-use embassy_executor::Spawner;
+use embassy_executor::{task, Spawner};
 use embassy_stm32::{
     exti::ExtiInput,
-    gpio::{Input, Level, Output, Pull, Speed},
+    gpio::{Input, Level, Output, OutputType, Pull, Speed},
+    peripherals::TIM1,
     rcc,
     spi::{self, Spi},
+    timer::{
+        complementary_pwm::{ComplementaryPwm, ComplementaryPwmPin},
+        simple_pwm::PwmPin,
+        Channel, CountingMode,
+    },
     Config,
 };
 use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
@@ -36,7 +44,7 @@ fn panic() -> ! {
 }
 
 #[embassy_executor::main]
-async fn main(_spawner: Spawner) {
+async fn main(spawner: Spawner) {
     let mut config = Config::default();
 
     // configure all system clocks to 170 MHz
@@ -86,6 +94,33 @@ async fn main(_spawner: Spawner) {
 
     setup_driver(&mut drv).await.unwrap();
 
+    info!("DRV initialized!");
+
+    /* PWM stuff */
+
+    let ch1 = PwmPin::new_ch1(p.PA8, OutputType::PushPull);
+    let ch1n = ComplementaryPwmPin::new_ch1(p.PA7, OutputType::PushPull);
+    let ch2 = PwmPin::new_ch2(p.PA9, OutputType::PushPull);
+    let ch2n = ComplementaryPwmPin::new_ch2(p.PA12, OutputType::PushPull);
+    let ch3 = PwmPin::new_ch3(p.PA10, OutputType::PushPull);
+    let ch3n = ComplementaryPwmPin::new_ch3(p.PF0, OutputType::PushPull);
+
+    let pwm = ComplementaryPwm::new(
+        p.TIM1,
+        Some(ch1),
+        Some(ch1n),
+        Some(ch2),
+        Some(ch2n),
+        Some(ch3),
+        Some(ch3n),
+        None,
+        None,
+        PWM_FREQUENCY,
+        CountingMode::CenterAlignedBothInterrupts,
+    );
+
+    spawner.spawn(spwm(pwm)).unwrap();
+
     // nFAULT handler
     // todo: make this into a task (requires a static reference to the SPI bus)
     n_fault.wait_for_low().await;
@@ -118,4 +153,26 @@ async fn main(_spawner: Spawner) {
 
     //     Timer::after_millis(50).await;
     // }
+}
+
+#[task]
+async fn spwm(mut pwm: ComplementaryPwm<'static, TIM1>) {
+    // enable channels
+    pwm.enable(Channel::Ch1);
+    pwm.enable(Channel::Ch2);
+    pwm.enable(Channel::Ch3);
+
+    // set pwm output
+    let frequency: f32 = 100.;
+
+    let v_a = helpers::generate_cos(frequency, 0.);
+    let v_b = helpers::generate_cos(frequency, -2. * PI / 3.);
+    let v_c = helpers::generate_cos(frequency, 2. * PI / 3.);
+
+    loop {
+        helpers::set_pwm_duty(&mut pwm, (v_a() + 1.0) / 2.0, Channel::Ch1);
+        helpers::set_pwm_duty(&mut pwm, (v_b() + 1.0) / 2.0, Channel::Ch2);
+        helpers::set_pwm_duty(&mut pwm, (v_c() + 1.0) / 2.0, Channel::Ch3);
+        Timer::after_micros(1).await;
+    }
 }

@@ -26,7 +26,7 @@ where
         self.spi.transfer_in_place(&mut buf).await?;
 
         // remove don't-cares
-        buf[0] &= 0x07;
+        // buf[0] &= 0x07;
 
         // deserialize
         Ok(R::from_bytes(buf))
