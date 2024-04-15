@@ -83,7 +83,7 @@ async fn main(spawner: Spawner) {
         Some(ch3n),
         None,
         None,
-        time::khz(50),
+        time::khz(25),
         CountingMode::CenterAlignedBothInterrupts,
     );
 
@@ -124,7 +124,7 @@ async fn main(spawner: Spawner) {
 
     let max = pwm.get_max_duty();
     pwm.enable(Channel::Ch1);
-    pwm.set_duty(Channel::Ch1, max / 2);
+    // pwm.set_duty(Channel::Ch1, max / 2);
 
     info!("PWM initialized");
     info!("PWM max duty {}", max);
