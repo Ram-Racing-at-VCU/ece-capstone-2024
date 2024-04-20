@@ -5,7 +5,7 @@ use embassy_stm32::time::{khz, mhz, Hertz};
 pub const DRV_INIT_READS: usize = 10_000;
 
 /// SPI Frequency
-pub const SPI_FREQUENCY: Hertz = mhz(7);
+pub const SPI_FREQUENCY: Hertz = mhz(1);
 
 /// PWM Frequency
 pub const PWM_FREQUENCY: Hertz = khz(45);
