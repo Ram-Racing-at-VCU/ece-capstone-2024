@@ -2,13 +2,8 @@
 
 use core::f32::consts::PI;
 
-use sbus::Sbus;
-
-use embassy_stm32::{
-    timer::{
-        complementary_pwm::ComplementaryPwm, Channel, ComplementaryCaptureCompare16bitInstance,
-    },
-    usart::{self, UartRx},
+use embassy_stm32::timer::{
+    complementary_pwm::ComplementaryPwm, AdvancedInstance4Channel, Channel,
 };
 use embassy_time::Instant;
 use micromath::F32Ext;
@@ -33,39 +28,9 @@ pub fn map_range(val: f32, before: (f32, f32), after: (f32, f32)) -> f32 {
 
 pub fn set_pwm_duty<T>(pwm: &mut ComplementaryPwm<T>, frac: f32, channel: Channel)
 where
-    T: ComplementaryCaptureCompare16bitInstance,
+    T: AdvancedInstance4Channel,
 {
     let max = pwm.get_max_duty() as f32;
     let duty = (max * frac) as u16;
     pwm.set_duty(channel, duty);
-}
-
-pub struct UartRxWrapper<'d, T: usart::BasicInstance, RxDma: usart::RxDma<T>> {
-    inner: UartRx<'d, T, RxDma>,
-}
-
-impl<'d, T: usart::BasicInstance, RxDma: usart::RxDma<T>> UartRxWrapper<'d, T, RxDma> {
-    pub fn new(sbus: UartRx<'d, T, RxDma>) -> Self {
-        Self { inner: sbus }
-    }
-}
-
-impl<'d, T: usart::BasicInstance, RxDma: usart::RxDma<T>> embedded_io_async::ErrorType
-    for UartRxWrapper<'d, T, RxDma>
-{
-    type Error = usart::Error;
-}
-
-impl<'d, T: usart::BasicInstance, RxDma: usart::RxDma<T>> embedded_io_async::Read
-    for UartRxWrapper<'d, T, RxDma>
-{
-    async fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
-        self.inner.read_until_idle(buf).await
-    }
-}
-
-pub fn usart_to_sbus<T: usart::BasicInstance, RxDma: usart::RxDma<T>>(
-    usart: UartRx<'_, T, RxDma>,
-) -> Sbus<UartRxWrapper<'_, T, RxDma>> {
-    Sbus::new(UartRxWrapper::new(usart))
 }

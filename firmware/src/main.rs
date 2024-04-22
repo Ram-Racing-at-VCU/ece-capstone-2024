@@ -12,27 +12,28 @@ use driver::{check_driver, report_status, setup_driver};
 
 use drv8323rs::Drv8323rs;
 // use ltc1408_12::Ltc1408_12;
+use sbus::Sbus;
 
-use defmt::{assert, info, println};
-// use micromath::F32Ext;
+use defmt::{assert, info};
 
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::{task, Spawner};
 use embassy_stm32::{
     exti::ExtiInput,
-    gpio::{Input, Level, Output, OutputType, Pull, Speed},
-    peripherals::{DMA1_CH3, TIM1, USART2},
-    rcc,
+    gpio::{Level, Output, OutputType, Pull, Speed},
+    mode::Async,
+    peripherals, rcc,
     spi::{self, Spi},
     timer::{
         complementary_pwm::{ComplementaryPwm, ComplementaryPwmPin},
+        low_level::CountingMode,
         simple_pwm::PwmPin,
-        Channel, CountingMode,
+        Channel,
     },
     usart::{self, DataBits, Parity, StopBits, UartRx},
     Config,
 };
-use embassy_sync::{blocking_mutex::raw::NoopRawMutex, mutex::Mutex};
+use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, mutex::Mutex, once_lock::OnceLock};
 use embassy_time::Timer;
 
 // bind logger
@@ -47,9 +48,14 @@ fn panic() -> ! {
 // bind USART interrupt
 embassy_stm32::bind_interrupts!(
     struct Irqs {
-        USART2 => usart::InterruptHandler<USART2>;
+        USART2 => usart::InterruptHandler<peripherals::USART2>;
     }
 );
+
+static SPI_BUS: OnceLock<Mutex<ThreadModeRawMutex, Spi<'static, peripherals::SPI1, Async>>> =
+    OnceLock::new();
+
+static ENABLE: Mutex<ThreadModeRawMutex, bool> = Mutex::new(false);
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
@@ -57,14 +63,14 @@ async fn main(spawner: Spawner) {
 
     // configure all system clocks to 170 MHz
     let mut rcc = rcc::Config::default();
-    rcc.mux = rcc::ClockSrc::PLL;
+    rcc.sys = rcc::Sysclk::PLL1_R;
     rcc.pll = Some(rcc::Pll {
-        source: rcc::PllSource::HSI,  // 16 MHz
-        prediv_m: rcc::PllM::DIV4,    // 16/4= 4 MHz
-        mul_n: rcc::PllN::MUL85,      // 4*85 = 340 MHz
-        div_p: Some(rcc::PllP::DIV2), // 340/2 = 170 MHz
-        div_q: Some(rcc::PllQ::DIV2), // 340/2 = 170 MHz
-        div_r: Some(rcc::PllR::DIV2), // 340/2 = 170 MHz
+        source: rcc::PllSource::HSI,    // 16 MHz
+        prediv: rcc::PllPreDiv::DIV4,   // 16/4= 4 MHz
+        mul: rcc::PllMul::MUL85,        // 4*85 = 340 MHz
+        divp: Some(rcc::PllPDiv::DIV2), // 340/2 = 170 MHz
+        divq: Some(rcc::PllQDiv::DIV2), // 340/2 = 170 MHz
+        divr: Some(rcc::PllRDiv::DIV2), // 340/2 = 170 MHz
     });
 
     config.rcc = rcc;
@@ -81,26 +87,19 @@ async fn main(spawner: Spawner) {
         p.SPI1, p.PB3, p.PB5, p.PB4, p.DMA1_CH1, p.DMA1_CH2, spi_config,
     );
 
-    let spi_bus: Mutex<NoopRawMutex, _> = Mutex::new(spi);
+    let spi_bus: Mutex<ThreadModeRawMutex, _> = Mutex::new(spi);
 
-    /* S.BUS */
-    let mut sbus_config = usart::Config::default();
-    sbus_config.baudrate = 100_000;
-    sbus_config.data_bits = DataBits::DataBits8;
-    sbus_config.stop_bits = StopBits::STOP2;
-    sbus_config.parity = Parity::ParityEven;
-    sbus_config.invert_rx = true;
-
-    let sbus = UartRx::new(p.USART2, Irqs, p.PA3, p.DMA1_CH3, sbus_config).unwrap();
+    if SPI_BUS.init(spi_bus).is_err() {
+        panic!("Failed to init SPI bus!")
+    };
 
     /* DRV stuff */
 
     let drv_cs = Output::new(p.PA11, Level::High, Speed::VeryHigh);
-    let drv = SpiDevice::new(&spi_bus, drv_cs);
+    let drv = SpiDevice::new(SPI_BUS.get().await, drv_cs);
     let mut drv = Drv8323rs::new(drv);
     let mut drv_enable = Output::new(p.PB6, Level::Low, Speed::VeryHigh);
-    let n_fault = Input::new(p.PB0, Pull::Up);
-    let mut n_fault = ExtiInput::new(n_fault, p.EXTI0);
+    let n_fault = ExtiInput::new(p.PB0, p.EXTI0, Pull::Up);
 
     drv_enable.set_high();
     Timer::after_millis(2).await;
@@ -114,6 +113,11 @@ async fn main(spawner: Spawner) {
 
     info!("DRV initialized!");
 
+    // nFAULT handler
+    spawner
+        .spawn(nfault_handler(n_fault, drv, drv_enable))
+        .unwrap();
+
     /* PWM stuff */
 
     let ch1 = PwmPin::new_ch1(p.PA8, OutputType::PushPull);
@@ -123,7 +127,7 @@ async fn main(spawner: Spawner) {
     let ch3 = PwmPin::new_ch3(p.PA10, OutputType::PushPull);
     let ch3n = ComplementaryPwmPin::new_ch3(p.PF0, OutputType::PushPull);
 
-    let pwm = ComplementaryPwm::new(
+    let mut pwm = ComplementaryPwm::new(
         p.TIM1,
         Some(ch1),
         Some(ch1n),
@@ -137,14 +141,18 @@ async fn main(spawner: Spawner) {
         CountingMode::CenterAlignedBothInterrupts,
     );
 
-    spawner.spawn(spwm(pwm, sbus)).unwrap();
+    /* S.BUS */
+    let mut sbus_config = usart::Config::default();
+    sbus_config.baudrate = 100_000;
+    sbus_config.data_bits = DataBits::DataBits8;
+    sbus_config.stop_bits = StopBits::STOP2;
+    sbus_config.parity = Parity::ParityEven;
+    sbus_config.invert_rx = true;
+    sbus_config.assume_noise_free = false;
 
-    // nFAULT handler
-    // todo: make this into a task (requires a static reference to the SPI bus)
-    n_fault.wait_for_low().await;
-    report_status(&mut drv).await.unwrap();
-    drv_enable.set_low();
-    panic!("Shutting down because of DRV error");
+    let sbus = UartRx::new(p.USART2, Irqs, p.PA3, p.DMA1_CH3, sbus_config).unwrap();
+
+    spawner.spawn(radio_receive(sbus)).unwrap();
 
     /* ADC stuff */
 
@@ -172,38 +180,64 @@ async fn main(spawner: Spawner) {
 
     //     Timer::after_millis(50).await;
     // }
-}
 
-#[task]
-async fn spwm(mut pwm: ComplementaryPwm<'static, TIM1>, _sbus: UartRx<'static, USART2, DMA1_CH3>) {
-    // create USART DMA buffer
-    // let mut sbus_buffer = [0; 64];
-
-    // initialize SBUS
-    // let mut sbus = sbus.into_ring_buffered(&mut sbus_buffer);
-    // let mut sbus = Sbus::new(sbus);
-
-    // enable channels
-    pwm.enable(Channel::Ch1);
-    pwm.enable(Channel::Ch2);
-    pwm.enable(Channel::Ch3);
+    /* Control loop (Open loop) */
 
     // set pwm output
     let frequency: f32 = 110.;
 
-    println!("motor spin at {} Hz, {} rpm", frequency, frequency * 30.,);
+    info!("motor spin at {} Hz, {} rpm", frequency, frequency * 30.,);
 
     let v_a = helpers::generate_cos(frequency, 0.);
     let v_b = helpers::generate_cos(frequency, -2. * PI / 3.);
     let v_c = helpers::generate_cos(frequency, 2. * PI / 3.);
+    loop {
+        // enable or disable channels
+        let enable = *ENABLE.lock().await;
+        if enable {
+            pwm.enable(Channel::Ch1);
+            pwm.enable(Channel::Ch2);
+            pwm.enable(Channel::Ch3);
+        } else {
+            pwm.disable(Channel::Ch1);
+            pwm.disable(Channel::Ch2);
+            pwm.disable(Channel::Ch3);
+        }
+
+        // calculate output
+        helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_a() + 1.0) / 2.0), Channel::Ch1);
+        helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_b() + 1.0) / 2.0), Channel::Ch2);
+        helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_c() + 1.0) / 2.0), Channel::Ch3);
+        Timer::after_micros(1).await;
+    }
+}
+
+#[task]
+async fn radio_receive(sbus: UartRx<'static, peripherals::USART2, Async>) {
+    // create USART DMA buffer
+    let mut sbus_buffer = [0; 1024];
+
+    // initialize SBUS
+    let sbus = sbus.into_ring_buffered(&mut sbus_buffer);
+    let mut sbus = Sbus::new(sbus);
 
     loop {
-        // let mut bytes = [0; 25];
-        // sbus.read(&mut bytes).await.unwrap();
-        // info!("bytes: {}", bytes);
+        let data = sbus.get_packet().await.unwrap();
 
-        // info!("waiting for data :(");
-        // let data = sbus.get_packet().await.unwrap();
+        let new_enable = data.ch5() > 1200;
+
+        {
+            let mut enable = ENABLE.lock().await;
+
+            if *enable != new_enable {
+                if new_enable {
+                    info!("enabled!");
+                } else {
+                    info!("disabled...");
+                }
+                *enable = new_enable;
+            }
+        }
 
         // info!(
         //     "SBUS channels: ch1: {:05}, ch2: {:05}, ch3: {:05}, ch4: {:05}, ch5: {:05}, ch6: {:05}, ch7: {:05}, ch8: {:05}, ch9: {:05}, ch10: {:05}, ch11: {:05}, ch12: {:05}, ch13: {:05}, ch14: {:05}, ch15: {:05}, ch16: {:05}",
@@ -224,10 +258,24 @@ async fn spwm(mut pwm: ComplementaryPwm<'static, TIM1>, _sbus: UartRx<'static, U
         //     data.ch15(),
         //     data.ch16(),
         // );
-
-        helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_a() + 1.0) / 2.0), Channel::Ch1);
-        helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_b() + 1.0) / 2.0), Channel::Ch2);
-        helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_c() + 1.0) / 2.0), Channel::Ch3);
-        Timer::after_micros(1).await;
     }
+}
+
+#[task]
+async fn nfault_handler(
+    mut n_fault: ExtiInput<'static>,
+    mut drv: Drv8323rs<
+        SpiDevice<
+            'static,
+            ThreadModeRawMutex,
+            Spi<'static, peripherals::SPI1, Async>,
+            Output<'static>,
+        >,
+    >,
+    mut drv_enable: Output<'static>,
+) {
+    n_fault.wait_for_low().await;
+    report_status(&mut drv).await.unwrap();
+    drv_enable.set_low();
+    panic!("Shutting down because of DRV error");
 }

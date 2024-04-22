@@ -6,16 +6,16 @@ use drv8323rs::{registers::*, Drv8323rs, ReadRegister, WriteRegister};
 use embassy_embedded_hal::shared_bus::{asynch::spi::SpiDevice, SpiDeviceError};
 use embassy_stm32::{
     gpio::Output,
-    peripherals::{DMA1_CH1, DMA1_CH2, PA11, SPI1},
+    mode::Async,
+    peripherals::SPI1,
     spi::{Error as SpiError, Spi},
 };
-use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 
 use super::consts::DRV_INIT_READS;
 
-type Drv<'a> = Drv8323rs<
-    SpiDevice<'a, NoopRawMutex, Spi<'static, SPI1, DMA1_CH1, DMA1_CH2>, Output<'static, PA11>>,
->;
+type Drv<'a> =
+    Drv8323rs<SpiDevice<'a, ThreadModeRawMutex, Spi<'static, SPI1, Async>, Output<'static>>>;
 
 type Error = SpiDeviceError<SpiError, Infallible>;
 
