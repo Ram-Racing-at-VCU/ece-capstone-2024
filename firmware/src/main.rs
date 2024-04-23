@@ -7,7 +7,8 @@ mod helpers;
 
 use core::f32::consts::PI;
 
-use consts::{PWM_FREQUENCY, SPI_FREQUENCY};
+use consts::{PWM_FREQUENCY, SPI_FREQUENCY, WINDOW_SIZE};
+use control_algorithms::filters::AverageFilter;
 use driver::{check_driver, report_status, setup_driver};
 
 use drv8323rs::Drv8323rs;
@@ -39,7 +40,7 @@ use embassy_sync::{
     mutex::Mutex,
     once_lock::OnceLock,
 };
-use embassy_time::Timer;
+use embassy_time::{Instant, Timer};
 
 // bind logger
 use defmt_rtt as _;
@@ -180,6 +181,11 @@ async fn main(spawner: Spawner) {
     let v_b = helpers::generate_cos(frequency, -2. * PI / 3.);
     let v_c = helpers::generate_cos(frequency, 2. * PI / 3.);
 
+    let mut filter = AverageFilter::new([0.0; WINDOW_SIZE]);
+
+    let mut _last_angle = 0.0;
+    let mut last_time = Instant::now();
+
     loop {
         // enable or disable channels
         let enable = *ENABLE.lock().await;
@@ -203,13 +209,26 @@ async fn main(spawner: Spawner) {
         let beta = (feedback_data[1] - 1.24) / 2.0;
         let angle = f32::atan2(alpha, beta) * (180.0 / core::f32::consts::PI);
 
-        info!("angle: {}", angle);
+        // apply filtering
+        let angle = filter.update(angle);
+
+        // calculate rotational frequency
+        let dt = last_time.elapsed().as_micros() as f32 * 1e-6;
+        // let freq = (angle - last_angle) / (dt * 360.0);
+
+        info!("sample_rate: {} kHz", 1e-3 / dt);
 
         // calculate output
         helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_a() + 1.0) / 2.0), Channel::Ch1);
         helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_b() + 1.0) / 2.0), Channel::Ch2);
         helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_c() + 1.0) / 2.0), Channel::Ch3);
-        Timer::after_micros(1).await;
+
+        // update last values
+        _last_angle = angle;
+        last_time = Instant::now();
+
+        // delay (will be removed)
+        // Timer::after_micros(1).await;
     }
 }
 

@@ -4,6 +4,7 @@
 #![warn(missing_docs)]
 #![warn(clippy::missing_docs_in_private_items)]
 
+pub mod filters;
 pub mod foc;
 pub mod pid;
 pub mod svpwm;
