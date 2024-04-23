@@ -11,10 +11,11 @@ use consts::{PWM_FREQUENCY, SPI_FREQUENCY};
 use driver::{check_driver, report_status, setup_driver};
 
 use drv8323rs::Drv8323rs;
-// use ltc1408_12::Ltc1408_12;
+use ltc1408_12::Ltc1408_12;
 use sbus::Sbus;
 
 use defmt::{assert, info};
+use micromath::F32Ext;
 
 use embassy_embedded_hal::shared_bus::asynch::spi::SpiDevice;
 use embassy_executor::{task, Spawner};
@@ -33,7 +34,11 @@ use embassy_stm32::{
     usart::{self, DataBits, Parity, StopBits, UartRx},
     Config,
 };
-use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, mutex::Mutex, once_lock::OnceLock};
+use embassy_sync::{
+    blocking_mutex::raw::{NoopRawMutex, ThreadModeRawMutex},
+    mutex::Mutex,
+    once_lock::OnceLock,
+};
 use embassy_time::Timer;
 
 // bind logger
@@ -52,7 +57,7 @@ embassy_stm32::bind_interrupts!(
     }
 );
 
-static SPI_BUS: OnceLock<Mutex<ThreadModeRawMutex, Spi<'static, peripherals::SPI1, Async>>> =
+static SPI_BUS: OnceLock<Mutex<NoopRawMutex, Spi<'static, peripherals::SPI1, Async>>> =
     OnceLock::new();
 
 static ENABLE: Mutex<ThreadModeRawMutex, bool> = Mutex::new(false);
@@ -87,16 +92,26 @@ async fn main(spawner: Spawner) {
         p.SPI1, p.PB3, p.PB5, p.PB4, p.DMA1_CH1, p.DMA1_CH2, spi_config,
     );
 
-    let spi_bus: Mutex<ThreadModeRawMutex, _> = Mutex::new(spi);
+    let spi_bus: Mutex<NoopRawMutex, _> = Mutex::new(spi);
 
     if SPI_BUS.init(spi_bus).is_err() {
         panic!("Failed to init SPI bus!")
     };
 
+    let spi_bus = SPI_BUS.get().await;
+
+    /* ADC stuff */
+
+    let adc = SpiDevice::new(spi_bus, Output::new(p.PA0, Level::High, Speed::VeryHigh));
+    let mut adc = Ltc1408_12::new(adc, 5).unwrap();
+
+    let mut adc_conv = Output::new(p.PA2, Level::Low, Speed::Low);
+    let _ = adc.read().await; // read unfinished conversions
+
     /* DRV stuff */
 
     let drv_cs = Output::new(p.PA11, Level::High, Speed::VeryHigh);
-    let drv = SpiDevice::new(SPI_BUS.get().await, drv_cs);
+    let drv = SpiDevice::new(spi_bus, drv_cs);
     let mut drv = Drv8323rs::new(drv);
     let mut drv_enable = Output::new(p.PB6, Level::Low, Speed::VeryHigh);
     let n_fault = ExtiInput::new(p.PB0, p.EXTI0, Pull::Up);
@@ -154,33 +169,6 @@ async fn main(spawner: Spawner) {
 
     spawner.spawn(radio_receive(sbus)).unwrap();
 
-    /* ADC stuff */
-
-    // todo: make this share the bus with the DRV somehow
-
-    // let mut adc = Ltc1408_12::new(spi, 5).unwrap();
-
-    // let mut adc_conv = Output::new(p.PA2, Level::Low, Speed::Low);
-
-    // loop {
-    //     // trigger conversion
-    //     adc_conv.set_high();
-    //     adc_conv.set_low();
-
-    //     // read data
-    //     let adc_data = adc.read().await.unwrap();
-
-    //     // assign variables & apply scaling
-    //     let alpha = (adc_data[0] - 1.24) / 2.0;
-    //     let beta = (adc_data[1] - 1.24) / 2.0;
-    //     let angle = f32::atan2(alpha, beta) * (180.0 / core::f32::consts::PI);
-
-    //     // print output
-    //     info!("Got alpha: {}, beta: {}, angle: {}", alpha, beta, angle);
-
-    //     Timer::after_millis(50).await;
-    // }
-
     /* Control loop (Open loop) */
 
     // set pwm output
@@ -191,6 +179,7 @@ async fn main(spawner: Spawner) {
     let v_a = helpers::generate_cos(frequency, 0.);
     let v_b = helpers::generate_cos(frequency, -2. * PI / 3.);
     let v_c = helpers::generate_cos(frequency, 2. * PI / 3.);
+
     loop {
         // enable or disable channels
         let enable = *ENABLE.lock().await;
@@ -203,6 +192,18 @@ async fn main(spawner: Spawner) {
             pwm.disable(Channel::Ch2);
             pwm.disable(Channel::Ch3);
         }
+
+        // trigger ADC conversion
+        adc_conv.set_high();
+        adc_conv.set_low();
+
+        // read sensor feedback
+        let feedback_data = adc.read().await.unwrap();
+        let alpha = (feedback_data[0] - 1.24) / 2.0;
+        let beta = (feedback_data[1] - 1.24) / 2.0;
+        let angle = f32::atan2(alpha, beta) * (180.0 / core::f32::consts::PI);
+
+        info!("angle: {}", angle);
 
         // calculate output
         helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_a() + 1.0) / 2.0), Channel::Ch1);
@@ -265,12 +266,7 @@ async fn radio_receive(sbus: UartRx<'static, peripherals::USART2, Async>) {
 async fn nfault_handler(
     mut n_fault: ExtiInput<'static>,
     mut drv: Drv8323rs<
-        SpiDevice<
-            'static,
-            ThreadModeRawMutex,
-            Spi<'static, peripherals::SPI1, Async>,
-            Output<'static>,
-        >,
+        SpiDevice<'static, NoopRawMutex, Spi<'static, peripherals::SPI1, Async>, Output<'static>>,
     >,
     mut drv_enable: Output<'static>,
 ) {

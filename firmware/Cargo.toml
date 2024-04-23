@@ -90,7 +90,7 @@ sbus = { path = "../sbus", features = ["defmt"] }
 # Control Algorithms
 control_algorithms = { path = "../control_algorithms" }
 # LTC driver
-ltc1408-12 = { path = "../ltc1408-12" }
+ltc1408-12 = { path = "../ltc1408-12", features = ["unsafe_spi_device"] }
 
 # Linear Algebra
 nalgebra = { version = "0.32.4", default-features = false, features = [

@@ -4,17 +4,22 @@
 #![warn(missing_docs)]
 #![warn(clippy::missing_docs_in_private_items)]
 
-use embedded_hal_async::spi::SpiBus;
+/* SPI bus/device override */
+
+#[cfg(not(feature = "unsafe_spi_device"))]
+use embedded_hal_async::spi::SpiBus as Spi;
+#[cfg(feature = "unsafe_spi_device")]
+use embedded_hal_async::spi::SpiDevice as Spi;
 
 /// The LTC1408-12
-pub struct Ltc1408_12<T: SpiBus> {
+pub struct Ltc1408_12<T: Spi> {
     /// SPI bus
     spi: T,
     /// number of enabled channels
     channels: usize,
 }
 
-impl<T: SpiBus> Ltc1408_12<T> {
+impl<T: Spi> Ltc1408_12<T> {
     /// Constructor for the LTC1408-12. Input the number of channels enabled (1..=6)
     pub fn new(spi: T, channels: usize) -> Option<Self> {
         if channels > 0 && channels <= 6 {

@@ -10,26 +10,34 @@ use embassy_stm32::{
     peripherals::SPI1,
     spi::{Error as SpiError, Spi},
 };
-use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 
 use super::consts::DRV_INIT_READS;
 
-type Drv<'a> =
-    Drv8323rs<SpiDevice<'a, ThreadModeRawMutex, Spi<'static, SPI1, Async>, Output<'static>>>;
+type Drv<'a> = Drv8323rs<SpiDevice<'a, NoopRawMutex, Spi<'static, SPI1, Async>, Output<'static>>>;
 
 type Error = SpiDeviceError<SpiError, Infallible>;
 
 /// Repeatedly reads from one of the configuration registers of the DRV
 /// to ensure that the device is functional.
 pub async fn check_driver(drv: &mut Drv<'_>) -> Result<bool, Error> {
+    let mut failures = 0;
     for _ in 0..DRV_INIT_READS {
         let register: CsaControl = drv.read().await?;
         if register.into_bytes() != [0x02, 0x83] {
-            return Ok(false);
+            failures += 1;
         }
     }
 
-    Ok(true)
+    if failures != 0 {
+        error!(
+            "DRV didn't function correctly ({}% failure rate)",
+            failures as f32 * 100.0 / DRV_INIT_READS as f32
+        );
+        Ok(false)
+    } else {
+        Ok(true)
+    }
 }
 
 /// Set up the DRV8323RS configuration.
