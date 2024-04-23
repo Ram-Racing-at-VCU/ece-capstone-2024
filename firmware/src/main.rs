@@ -7,11 +7,11 @@ mod helpers;
 
 use core::f32::consts::PI;
 
-use consts::{PWM_FREQUENCY, SPI_FREQUENCY, WINDOW_SIZE};
-use control_algorithms::filters::AverageFilter;
+use consts::{CUTOFF, PWM_FREQUENCY, SAMPLE_RATE, SENSITIVITY, SPI_FREQUENCY};
 use driver::{check_driver, report_status, setup_driver};
 
 use drv8323rs::Drv8323rs;
+use dyn_smooth::DynamicSmootherEcoF32;
 use ltc1408_12::Ltc1408_12;
 use sbus::Sbus;
 
@@ -57,6 +57,8 @@ embassy_stm32::bind_interrupts!(
         USART2 => usart::InterruptHandler<peripherals::USART2>;
     }
 );
+
+// shared resources
 
 static SPI_BUS: OnceLock<Mutex<NoopRawMutex, Spi<'static, peripherals::SPI1, Async>>> =
     OnceLock::new();
@@ -181,9 +183,10 @@ async fn main(spawner: Spawner) {
     let v_b = helpers::generate_cos(frequency, -2. * PI / 3.);
     let v_c = helpers::generate_cos(frequency, 2. * PI / 3.);
 
-    let mut filter = AverageFilter::new([0.0; WINDOW_SIZE]);
+    let mut angle_filter = DynamicSmootherEcoF32::new(CUTOFF, SAMPLE_RATE, SENSITIVITY);
+    // let mut speed_filter = DynamicSmootherEcoF32::new(2.0, SAMPLE_RATE, 0.5);
 
-    let mut _last_angle = 0.0;
+    let mut last_angle = 0.0;
     let mut last_time = Instant::now();
 
     loop {
@@ -210,13 +213,24 @@ async fn main(spawner: Spawner) {
         let angle = f32::atan2(alpha, beta) * (180.0 / core::f32::consts::PI);
 
         // apply filtering
-        let angle = filter.update(angle);
+        let angle = angle_filter.tick(angle);
 
         // calculate rotational frequency
         let dt = last_time.elapsed().as_micros() as f32 * 1e-6;
-        // let freq = (angle - last_angle) / (dt * 360.0);
 
-        info!("sample_rate: {} kHz", 1e-3 / dt);
+        let mut diff = angle - last_angle;
+        if diff < -180.0 {
+            diff += 360.0;
+        } else if diff > 180.0 {
+            diff -= 360.0;
+        }
+
+        let speed = (diff) / (dt * 360.0);
+        // let speed = speed_filter.tick(speed);
+
+        info!("angle: {}", angle);
+        info!("freq: {}", speed);
+        info!("sample_rate: {}", 1e-3 / dt);
 
         // calculate output
         helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_a() + 1.0) / 2.0), Channel::Ch1);
@@ -224,7 +238,7 @@ async fn main(spawner: Spawner) {
         helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_c() + 1.0) / 2.0), Channel::Ch3);
 
         // update last values
-        _last_angle = angle;
+        last_angle = angle;
         last_time = Instant::now();
 
         // delay (will be removed)

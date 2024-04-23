@@ -10,5 +10,11 @@ pub const SPI_FREQUENCY: Hertz = mhz(5);
 /// PWM Frequency
 pub const PWM_FREQUENCY: Hertz = khz(45);
 
-/// Average filter window size
-pub const WINDOW_SIZE: usize = 10;
+/// Filter cutoff
+pub const CUTOFF: f32 = 100.0;
+
+/// Filter sample rate
+pub const SAMPLE_RATE: f32 = 28.5e3;
+
+/// Filter sensitivity factor
+pub const SENSITIVITY: f32 = 0.01;
