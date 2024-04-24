@@ -9,52 +9,63 @@ pub struct PIDController {
     pub k_i: f32,
     /// Derivative constant
     pub k_d: f32,
-    /// Sampling time
-    pub dt: f32,
     /// Previous error value
     previous_error: f32,
     /// Accumulated error
     accumulated_error: f32,
+    /// Max link voltage
+    max_voltage: f32,
+    /// Max possible error (can be acceleration or velocity)
+    max_error: f32,
 }
 
 impl PIDController {
     /// Constructor with field values
-    pub fn new(k_p: f32, k_i: f32, k_d: f32, dt: f32) -> Self {
+    pub fn new(k_p: f32, k_i: f32, k_d: f32, max_voltage: f32, max_error: f32) -> Self {
         Self {
             k_p,
             k_i,
             k_d,
-            dt,
+            max_voltage,
+            max_error,
             ..Default::default() // Initialize other fields to zero, as user should not have access to those fields
         }
     }
 
     /// Modify controller parameters
-    pub fn modify(&mut self, k_p: f32, k_i: f32, k_d: f32, dt: f32) {
+    pub fn modify(&mut self, k_p: f32, k_i: f32, k_d: f32) {
         self.k_p = k_p;
         self.k_i = k_i;
         self.k_d = k_d;
-        self.dt = dt;
     }
 
     /// Update internal states of controller, and return control signal
-    pub fn update(&mut self, input: f32, measurement: f32) -> f32 {
+    pub fn output(&mut self, input: f32, measurement: f32, delta_t: f32) -> Result<f32, &str> {
         // Calculate current error
+
         let error = input - measurement;
 
+        if error > self.max_error {
+            return Err("ControllerError: Error value is greater than max_error");
+        }
+
         // Update integral term
-        self.accumulated_error += error * self.dt;
+        self.accumulated_error += error;
 
         // Proportional component (constant * error)
         let p = self.k_p * error;
         // Integral component (constant * integral(error, dt))
-        let i = self.k_i * self.accumulated_error * self.dt;
+        let i = self.k_i * self.accumulated_error * delta_t;
         // Derivative component (constant * d/dt(error))
-        let d = self.k_d * (error - self.previous_error) / self.dt;
+        let d = self.k_d * (error - self.previous_error) / delta_t;
         // Update previous error value to be used in next iteration
         self.previous_error = error;
 
         // Return controller output
-        p + i + d
+
+        if p + i + d > self.max_voltage {
+            return Err("ControllerError: Commanded voltage is higher than max voltage");
+        }
+        Ok(p + i + d)
     }
 }
