@@ -5,7 +5,16 @@ use embassy_stm32::time::{khz, mhz, Hertz};
 pub const DRV_INIT_READS: usize = 10_000;
 
 /// SPI Frequency
-pub const SPI_FREQUENCY: Hertz = mhz(1);
+pub const SPI_FREQUENCY: Hertz = mhz(5);
 
 /// PWM Frequency
 pub const PWM_FREQUENCY: Hertz = khz(45);
+
+/// Angle filter cutoff frequency in hz
+pub const F_C: i32 = 850;
+
+/// Angle filter sampling frequency in khz
+pub const F_S: i32 = 15;
+
+/// Speed filter window size
+pub const WINDOW_SIZE: usize = 51;

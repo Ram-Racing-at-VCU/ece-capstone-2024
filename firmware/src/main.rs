@@ -7,7 +7,9 @@ mod helpers;
 
 use core::f32::consts::PI;
 
-use consts::{PWM_FREQUENCY, SPI_FREQUENCY};
+use biquad::{Biquad, Coefficients, DirectForm2Transposed, ToHertz, Type, Q_BUTTERWORTH_F32};
+use consts::{F_C, F_S, PWM_FREQUENCY, SPI_FREQUENCY, WINDOW_SIZE};
+use control_algorithms::filters::MedianFilter;
 use driver::{check_driver, report_status, setup_driver};
 
 use drv8323rs::Drv8323rs;
@@ -39,7 +41,7 @@ use embassy_sync::{
     mutex::Mutex,
     once_lock::OnceLock,
 };
-use embassy_time::Timer;
+use embassy_time::{Instant, Timer};
 
 // bind logger
 use defmt_rtt as _;
@@ -56,6 +58,8 @@ embassy_stm32::bind_interrupts!(
         USART2 => usart::InterruptHandler<peripherals::USART2>;
     }
 );
+
+// shared resources
 
 static SPI_BUS: OnceLock<Mutex<NoopRawMutex, Spi<'static, peripherals::SPI1, Async>>> =
     OnceLock::new();
@@ -180,6 +184,22 @@ async fn main(spawner: Spawner) {
     let v_b = helpers::generate_cos(frequency, -2. * PI / 3.);
     let v_c = helpers::generate_cos(frequency, 2. * PI / 3.);
 
+    let coefficients =
+        Coefficients::<f32>::from_params(Type::LowPass, F_S.khz(), F_C.hz(), Q_BUTTERWORTH_F32)
+            .unwrap();
+
+    let mut alpha_filter = DirectForm2Transposed::<f32>::new(coefficients);
+    let mut beta_filter = DirectForm2Transposed::<f32>::new(coefficients);
+
+    let mut speed_filter = MedianFilter::new([0.0; WINDOW_SIZE]);
+
+    let mut last_time = Instant::now(); // dt
+
+    let mut last_alpha = 0.0; // error rejection
+    let mut last_beta = 0.0;
+
+    let mut last_angle = 0.0; // differentiating
+
     loop {
         // enable or disable channels
         let enable = *ENABLE.lock().await;
@@ -199,17 +219,51 @@ async fn main(spawner: Spawner) {
 
         // read sensor feedback
         let feedback_data = adc.read().await.unwrap();
-        let alpha = (feedback_data[0] - 1.24) / 2.0;
-        let beta = (feedback_data[1] - 1.24) / 2.0;
+        let new_time = Instant::now();
+
+        let mut alpha = (feedback_data[0] - 1.24) / 2.0;
+        let mut beta = (feedback_data[1] - 1.24) / 2.0;
+
+        // remove erroneous values
+        if !(-1.0..1.0).contains(&alpha) {
+            alpha = last_alpha;
+        }
+
+        if !(-1.0..1.0).contains(&beta) {
+            beta = last_beta;
+        }
+
+        // apply filtering
+        alpha = alpha_filter.run(alpha);
+        beta = beta_filter.run(beta);
+
+        // calculate angle
         let angle = f32::atan2(alpha, beta) * (180.0 / core::f32::consts::PI);
 
+        // calculate time delta
+        let dt = new_time.duration_since(last_time).as_micros() as f32 * 1e-6;
+
+        // calculate speed
+        let mut speed = (angle - last_angle) / (dt * 360.0);
+        speed = speed_filter.run(speed);
+
+        // info!("{}, {}, {}, {}, {}", alpha, beta, angle, speed, dt);
+
         info!("angle: {}", angle);
+        info!("speed: {}", speed);
+        info!("sample_rate: {}", 1e-3 / dt);
 
         // calculate output
         helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_a() + 1.0) / 2.0), Channel::Ch1);
         helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_b() + 1.0) / 2.0), Channel::Ch2);
         helpers::set_pwm_duty(&mut pwm, 0.2 * ((v_c() + 1.0) / 2.0), Channel::Ch3);
-        Timer::after_micros(1).await;
+
+        // update last values
+        last_time = new_time;
+
+        last_alpha = alpha;
+        last_beta = beta;
+        last_angle = angle;
     }
 }
 
