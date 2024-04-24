@@ -4,7 +4,9 @@
   "cSpell.words": [
     "asynch",
     "baudrate",
+    "biquad",
     "bitfield",
+    "BUTTERWORTH",
     "consts",
     "conv",
     "cpuv",
@@ -28,6 +30,7 @@
     "nfault",
     "otsd",
     "Pllsrc",
+    "powi",
     "prediv",
     "repr",
     "sbus",

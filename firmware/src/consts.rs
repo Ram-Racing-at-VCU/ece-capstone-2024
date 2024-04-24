@@ -10,11 +10,11 @@ pub const SPI_FREQUENCY: Hertz = mhz(5);
 /// PWM Frequency
 pub const PWM_FREQUENCY: Hertz = khz(45);
 
-/// Filter cutoff
-pub const CUTOFF: f32 = 100.0;
+/// Angle filter cutoff frequency in hz
+pub const F_C: i32 = 850;
 
-/// Filter sample rate
-pub const SAMPLE_RATE: f32 = 28.5e3;
+/// Angle filter sampling frequency in khz
+pub const F_S: i32 = 15;
 
-/// Filter sensitivity factor
-pub const SENSITIVITY: f32 = 0.01;
+/// Speed filter window size
+pub const WINDOW_SIZE: usize = 51;

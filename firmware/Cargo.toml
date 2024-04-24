@@ -93,9 +93,10 @@ control_algorithms = { path = "../control_algorithms" }
 ltc1408-12 = { path = "../ltc1408-12", features = ["unsafe_spi_device"] }
 
 # Linear Algebra
-nalgebra = { version = "0.32.4", default-features = false, features = [
+nalgebra = { version = "0.32.5", default-features = false, features = [
     "macros",
+    "libm",
 ] }
 
-# Smoothing filter
-dyn-smooth = "0.2.0"
+# Biquad IIR Filters
+biquad = "0.4.2"
