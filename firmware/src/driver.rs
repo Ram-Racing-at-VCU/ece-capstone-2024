@@ -10,11 +10,12 @@ use embassy_stm32::{
     peripherals::SPI1,
     spi::{Error as SpiError, Spi},
 };
-use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 
 use super::consts::DRV_INIT_READS;
 
-type Drv<'a> = Drv8323rs<SpiDevice<'a, NoopRawMutex, Spi<'static, SPI1, Async>, Output<'static>>>;
+type Drv<'a> =
+    Drv8323rs<SpiDevice<'a, CriticalSectionRawMutex, Spi<'static, SPI1, Async>, Output<'static>>>;
 
 type Error = SpiDeviceError<SpiError, Infallible>;
 
