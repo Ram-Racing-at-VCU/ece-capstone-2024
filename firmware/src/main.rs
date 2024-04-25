@@ -8,8 +8,8 @@ mod helpers;
 use core::f32::consts::PI;
 
 use biquad::{Biquad, Coefficients, DirectForm2Transposed, ToHertz, Type, Q_BUTTERWORTH_F32};
-use consts::{F_C, F_S, PWM_FREQUENCY, SPI_FREQUENCY, WINDOW_SIZE};
-use control_algorithms::{filters::MedianFilter, pid::PIDController};
+use consts::{F_C, F_S, INDUCTANCE, PWM_FREQUENCY, RESISTANCE, SPI_FREQUENCY};
+use control_algorithms::pid::PIDController;
 use driver::{check_driver, report_status, setup_driver};
 
 use drv8323rs::Drv8323rs;
@@ -197,42 +197,27 @@ async fn main(spawner: Spawner) {
     let mut alpha_filter = DirectForm2Transposed::<f32>::new(coefficients);
     let mut beta_filter = DirectForm2Transposed::<f32>::new(coefficients);
 
-    let mut speed_filter = MedianFilter::new([0.0; WINDOW_SIZE]);
+    // let mut speed_filter = MedianFilter::new([0.0; WINDOW_SIZE]);
 
     let mut i_a_filter = DirectForm2Transposed::<f32>::new(coefficients);
-    let mut i_b_filter = DirectForm2Transposed::<f32>::new(coefficients);
-    let mut i_c_filter = DirectForm2Transposed::<f32>::new(coefficients);
+    // let mut i_b_filter = DirectForm2Transposed::<f32>::new(coefficients);
+    // let mut i_c_filter = DirectForm2Transposed::<f32>::new(coefficients);
 
     let mut last_time = Instant::now(); // dt
 
-    let mut last_angle = 0.0; // differentiating
-
-    let mut _qn = 0.0;
-    let mut _offset = 0.0;
+    // let mut last_angle = 0.0; // differentiating
 
     let bw = 1e3;
-    let l = 2.56e-6;
-    let r = 6.2832e-3;
-    let mut pid = PIDController::new(l * bw, r * bw, 0.0, None);
+    let mut pid = PIDController::new(INDUCTANCE * bw, RESISTANCE * bw, 0.0, None);
 
-    info!("Starting control loop!");
+    info!("Calibrating Initial Angle...");
 
-    loop {
-        // enable or disable channels
-        let enable = *ENABLE.lock().await;
-        if enable {
-            pwm.enable(Channel::Ch1);
-            pwm.enable(Channel::Ch2);
-            pwm.enable(Channel::Ch3);
-        } else {
-            info!("disabled...");
-            pwm.disable(Channel::Ch1);
-            pwm.disable(Channel::Ch2);
-            pwm.disable(Channel::Ch3);
-            Timer::after_millis(10).await;
-            continue;
-        }
+    pwm.enable(Channel::Ch1);
+    pwm.enable(Channel::Ch2);
+    pwm.disable(Channel::Ch3);
 
+    let mut angle_cal = 0.0;
+    for i in 0..4000 {
         // trigger ADC conversion
         adc_conv.set_high();
         adc_conv.set_low();
@@ -245,46 +230,24 @@ async fn main(spawner: Spawner) {
         let mut beta = (feedback_data[1] - 1.24) / 2.0;
 
         let mut i_a = (1.6336 - feedback_data[2]) / (10.0 * 2.5e-3);
-        let mut i_b = (1.6372 - feedback_data[3]) / (10.0 * 2.5e-3);
-        let mut i_c = (1.6395 - feedback_data[4]) / (10.0 * 2.5e-3);
 
         // apply filtering
         alpha = alpha_filter.run(alpha);
         beta = beta_filter.run(beta);
 
         i_a = i_a_filter.run(i_a);
-        i_b = i_b_filter.run(i_b);
-        i_c = i_c_filter.run(i_c);
 
         // calculate angle
         let angle = f32::atan2(alpha, beta) * (180.0 / PI);
 
+        if i > 3000 {
+            angle_cal += angle;
+        }
+
         // calculate time delta
         let dt = new_time.duration_since(last_time).as_micros() as f32 * 1e-6;
 
-        // calculate speed
-        let mut _speed = (angle - last_angle) / (dt * 360.0);
-        _speed = speed_filter.run(_speed);
-
-        // info!("{}, {}, {}, {},", i_a, i_b, i_c, dt);
-
-        _qn += (f32::abs(i_a) + f32::abs(i_b) + f32::abs(i_c)) / 3.0;
-        _offset += f32::abs(i_a + i_b + i_c);
-
         let c_t = (pid.output(3.0, -i_a, dt) / 12.6).clamp(0.0, 1.0);
-
-        // info!("angle: {}", angle);
-        // info!("speed: {}", speed);
-        // info!("sample_rate: {} kHz", 1e-3 / dt);
-        info!("i_a: {}", -i_a * 1e3);
-        // info!("i_b: {} mA", i_b * 1e3);
-        // info!("i_c: {} mA", i_c * 1e3);
-        info!("c_t: {}", c_t);
-
-        // info!("quantized noise: {} A", qn / 1000.0);
-        // info!("offset: {} A", offset / 1000.0);
-        _qn = 0.0;
-        _offset = 0.0;
 
         // calculate output
         helpers::set_pwm_duty(&mut pwm, c_t, Channel::Ch1);
@@ -293,8 +256,134 @@ async fn main(spawner: Spawner) {
 
         // update last values
         last_time = new_time;
-        last_angle = angle;
     }
+
+    let angle_cal_1 = angle_cal / 1000.0;
+
+    info!("Calibrated A-B: {}", angle_cal_1);
+
+    pwm.enable(Channel::Ch1);
+    pwm.disable(Channel::Ch2);
+    pwm.enable(Channel::Ch3);
+
+    angle_cal = 0.0;
+    for i in 0..4000 {
+        // trigger ADC conversion
+        adc_conv.set_high();
+        adc_conv.set_low();
+
+        // read sensor feedback
+        let feedback_data = adc.read().await.unwrap();
+        let new_time = Instant::now();
+
+        let mut alpha = (feedback_data[0] - 1.24) / 2.0;
+        let mut beta = (feedback_data[1] - 1.24) / 2.0;
+
+        let mut i_a = (1.6336 - feedback_data[2]) / (10.0 * 2.5e-3);
+
+        // apply filtering
+        alpha = alpha_filter.run(alpha);
+        beta = beta_filter.run(beta);
+
+        i_a = i_a_filter.run(i_a);
+
+        // calculate angle
+        let angle = f32::atan2(alpha, beta) * (180.0 / PI);
+
+        if i > 3000 {
+            angle_cal += angle;
+        }
+
+        // calculate time delta
+        let dt = new_time.duration_since(last_time).as_micros() as f32 * 1e-6;
+
+        let c_t = (pid.output(3.0, -i_a, dt) / 12.6).clamp(0.0, 1.0);
+
+        // calculate output
+        helpers::set_pwm_duty(&mut pwm, c_t, Channel::Ch1);
+        helpers::set_pwm_duty(&mut pwm, 0.0, Channel::Ch2);
+        helpers::set_pwm_duty(&mut pwm, 0.0, Channel::Ch3);
+
+        // update last values
+        last_time = new_time;
+    }
+
+    let angle_cal_2 = angle_cal / 1000.0;
+    info!("Calibrated A-C: {}", angle_cal_2);
+
+    let angle_offset = (angle_cal_1 + angle_cal_2) / 2.0;
+    info!("Angle Calibration value: {}", angle_offset);
+
+    // info!("Starting control loop!");
+
+    // loop {
+    //     // enable or disable channels
+    //     let enable = *ENABLE.lock().await;
+    //     if enable {
+    //         pwm.enable(Channel::Ch1);
+    //         pwm.enable(Channel::Ch2);
+    //         pwm.enable(Channel::Ch3);
+    //     } else {
+    //         info!("disabled...");
+    //         pwm.disable(Channel::Ch1);
+    //         pwm.disable(Channel::Ch2);
+    //         pwm.disable(Channel::Ch3);
+    //         Timer::after_millis(10).await;
+    //         continue;
+    //     }
+
+    //     // trigger ADC conversion
+    //     adc_conv.set_high();
+    //     adc_conv.set_low();
+
+    //     // read sensor feedback
+    //     let feedback_data = adc.read().await.unwrap();
+    //     let new_time = Instant::now();
+
+    //     let mut alpha = (feedback_data[0] - 1.24) / 2.0;
+    //     let mut beta = (feedback_data[1] - 1.24) / 2.0;
+
+    //     let mut i_a = (1.6336 - feedback_data[2]) / (10.0 * 2.5e-3);
+    //     let mut _i_b = (1.6372 - feedback_data[3]) / (10.0 * 2.5e-3);
+    //     let mut _i_c = (1.6395 - feedback_data[4]) / (10.0 * 2.5e-3);
+
+    //     // apply filtering
+    //     alpha = alpha_filter.run(alpha);
+    //     beta = beta_filter.run(beta);
+
+    //     i_a = i_a_filter.run(i_a);
+    //     _i_b = i_b_filter.run(_i_b);
+    //     _i_c = i_c_filter.run(_i_c);
+
+    //     // calculate angle
+    //     let angle = f32::atan2(alpha, beta) * (180.0 / PI);
+
+    //     // calculate time delta
+    //     let dt = new_time.duration_since(last_time).as_micros() as f32 * 1e-6;
+
+    //     // calculate speed
+    //     let mut _speed = (angle - last_angle) / (dt * 360.0);
+    //     _speed = speed_filter.run(_speed);
+
+    //     let c_t = (pid.output(3.0, -i_a, dt) / 12.6).clamp(0.0, 1.0);
+
+    //     // info!("angle: {}", angle);
+    //     // info!("speed: {}", speed);
+    //     // info!("sample_rate: {} kHz", 1e-3 / dt);
+    //     info!("i_a: {}", -i_a * 1e3);
+    //     // info!("i_b: {} mA", i_b * 1e3);
+    //     // info!("i_c: {} mA", i_c * 1e3);
+    //     info!("c_t: {}", c_t);
+
+    //     // calculate output
+    //     helpers::set_pwm_duty(&mut pwm, c_t, Channel::Ch1);
+    //     helpers::set_pwm_duty(&mut pwm, 0.0, Channel::Ch2);
+    //     helpers::set_pwm_duty(&mut pwm, 0.0, Channel::Ch3);
+
+    //     // update last values
+    //     last_time = new_time;
+    //     last_angle = angle;
+    // }
 }
 
 #[task]

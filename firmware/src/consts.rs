@@ -18,3 +18,9 @@ pub const F_S: i32 = 17;
 
 /// Speed filter window size
 pub const WINDOW_SIZE: usize = 31;
+
+/// Motor Phase Resistance
+pub const RESISTANCE: f32 = 6.2832e-3;
+
+/// Motor Phase Inductance
+pub const INDUCTANCE: f32 = 2.56e-6;
