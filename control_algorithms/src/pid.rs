@@ -13,21 +13,18 @@ pub struct PIDController {
     previous_error: f32,
     /// Accumulated error
     accumulated_error: f32,
-    /// Max link voltage
-    max_voltage: f32,
-    /// Max possible error (can be acceleration or velocity)
-    max_error: f32,
+    /// Integrator limit
+    limit: Option<f32>,
 }
 
 impl PIDController {
     /// Constructor with field values
-    pub fn new(k_p: f32, k_i: f32, k_d: f32, max_voltage: f32, max_error: f32) -> Self {
+    pub fn new(k_p: f32, k_i: f32, k_d: f32, limit: Option<f32>) -> Self {
         Self {
             k_p,
             k_i,
             k_d,
-            max_voltage,
-            max_error,
+            limit,
             ..Default::default() // Initialize other fields to zero, as user should not have access to those fields
         }
     }
@@ -40,32 +37,29 @@ impl PIDController {
     }
 
     /// Update internal states of controller, and return control signal
-    pub fn output(&mut self, input: f32, measurement: f32, delta_t: f32) -> Result<f32, &str> {
+    pub fn output(&mut self, input: f32, measurement: f32, delta_t: f32) -> f32 {
         // Calculate current error
 
         let error = input - measurement;
 
-        if error > self.max_error {
-            return Err("ControllerError: Error value is greater than max_error");
-        }
-
         // Update integral term
-        self.accumulated_error += error;
+        self.accumulated_error += error * delta_t;
+
+        // Prevent integral wind-up
+        if let Some(limit) = self.limit {
+            self.accumulated_error = self.accumulated_error.clamp(-limit, limit);
+        }
 
         // Proportional component (constant * error)
         let p = self.k_p * error;
         // Integral component (constant * integral(error, dt))
-        let i = self.k_i * self.accumulated_error * delta_t;
+        let i = self.k_i * self.accumulated_error;
         // Derivative component (constant * d/dt(error))
         let d = self.k_d * (error - self.previous_error) / delta_t;
         // Update previous error value to be used in next iteration
         self.previous_error = error;
 
         // Return controller output
-
-        if p + i + d > self.max_voltage {
-            return Err("ControllerError: Commanded voltage is higher than max voltage");
-        }
-        Ok(p + i + d)
+        p + i + d
     }
 }

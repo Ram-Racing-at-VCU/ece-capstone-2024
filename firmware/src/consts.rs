@@ -14,7 +14,7 @@ pub const PWM_FREQUENCY: Hertz = khz(45);
 pub const F_C: i32 = 850;
 
 /// Angle filter sampling frequency in khz
-pub const F_S: i32 = 15;
+pub const F_S: i32 = 17;
 
 /// Speed filter window size
-pub const WINDOW_SIZE: usize = 51;
+pub const WINDOW_SIZE: usize = 31;
