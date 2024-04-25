@@ -7,15 +7,20 @@ mod helpers;
 
 use core::f32::consts::PI;
 
-use biquad::{Biquad, Coefficients, DirectForm2Transposed, ToHertz, Type, Q_BUTTERWORTH_F32};
-use consts::{F_C, F_S, INDUCTANCE, PWM_FREQUENCY, RESISTANCE, SPI_FREQUENCY};
-use control_algorithms::pid::PIDController;
+use consts::{BANDWIDTH, F_C, F_S, INDUCTANCE, PWM_FREQUENCY, RESISTANCE, SPI_FREQUENCY};
+use control_algorithms::{
+    foc::{
+        clarke_transform, inverse_clarke_transform, inverse_park_transform, park_transform,
+        Vector2, Vector3,
+    },
+    pid::PIDController,
+};
 use driver::{check_driver, report_status, setup_driver};
-
 use drv8323rs::Drv8323rs;
 use ltc1408_12::Ltc1408_12;
 use sbus::Sbus;
 
+use biquad::{Biquad, Coefficients, DirectForm2Transposed, ToHertz, Type, Q_BUTTERWORTH_F32};
 use defmt::{assert, error, info};
 use micromath::F32Ext;
 
@@ -62,7 +67,7 @@ embassy_stm32::bind_interrupts!(
 static SPI_BUS: OnceLock<Mutex<CriticalSectionRawMutex, Spi<'static, peripherals::SPI1, Async>>> =
     OnceLock::new();
 
-static ENABLE: Mutex<CriticalSectionRawMutex, bool> = Mutex::new(false);
+static THROTTLE: Mutex<CriticalSectionRawMutex, Option<f32>> = Mutex::new(None);
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
@@ -200,15 +205,12 @@ async fn main(spawner: Spawner) {
     // let mut speed_filter = MedianFilter::new([0.0; WINDOW_SIZE]);
 
     let mut i_a_filter = DirectForm2Transposed::<f32>::new(coefficients);
-    // let mut i_b_filter = DirectForm2Transposed::<f32>::new(coefficients);
-    // let mut i_c_filter = DirectForm2Transposed::<f32>::new(coefficients);
 
     let mut last_time = Instant::now(); // dt
 
     // let mut last_angle = 0.0; // differentiating
 
-    let bw = 1e3;
-    let mut pid = PIDController::new(INDUCTANCE * bw, RESISTANCE * bw, 0.0, None);
+    let mut pid_cal = PIDController::new(INDUCTANCE * BANDWIDTH, RESISTANCE * BANDWIDTH, 0.0, None);
 
     info!("Calibrating Initial Angle...");
 
@@ -229,7 +231,7 @@ async fn main(spawner: Spawner) {
         let mut alpha = (feedback_data[0] - 1.24) / 2.0;
         let mut beta = (feedback_data[1] - 1.24) / 2.0;
 
-        let mut i_a = (1.6336 - feedback_data[2]) / (10.0 * 2.5e-3);
+        let mut i_a = (feedback_data[2] - 1.6336) / (10.0 * 2.5e-3);
 
         // apply filtering
         alpha = alpha_filter.run(alpha);
@@ -247,7 +249,7 @@ async fn main(spawner: Spawner) {
         // calculate time delta
         let dt = new_time.duration_since(last_time).as_micros() as f32 * 1e-6;
 
-        let c_t = (pid.output(3.0, -i_a, dt) / 12.6).clamp(0.0, 1.0);
+        let c_t = (pid_cal.output(3.0, i_a, dt) / 12.6).clamp(0.0, 1.0);
 
         // calculate output
         helpers::set_pwm_duty(&mut pwm, c_t, Channel::Ch1);
@@ -261,6 +263,10 @@ async fn main(spawner: Spawner) {
     let angle_cal_1 = angle_cal / 1000.0;
 
     info!("Calibrated A-B: {}", angle_cal_1);
+
+    helpers::set_pwm_duty(&mut pwm, 0.0, Channel::Ch1);
+    helpers::set_pwm_duty(&mut pwm, 0.0, Channel::Ch2);
+    helpers::set_pwm_duty(&mut pwm, 0.0, Channel::Ch3);
 
     pwm.enable(Channel::Ch1);
     pwm.disable(Channel::Ch2);
@@ -279,7 +285,7 @@ async fn main(spawner: Spawner) {
         let mut alpha = (feedback_data[0] - 1.24) / 2.0;
         let mut beta = (feedback_data[1] - 1.24) / 2.0;
 
-        let mut i_a = (1.6336 - feedback_data[2]) / (10.0 * 2.5e-3);
+        let mut i_a = (feedback_data[2] - 1.6336) / (10.0 * 2.5e-3);
 
         // apply filtering
         alpha = alpha_filter.run(alpha);
@@ -297,7 +303,7 @@ async fn main(spawner: Spawner) {
         // calculate time delta
         let dt = new_time.duration_since(last_time).as_micros() as f32 * 1e-6;
 
-        let c_t = (pid.output(3.0, -i_a, dt) / 12.6).clamp(0.0, 1.0);
+        let c_t = (pid_cal.output(3.0, i_a, dt) / 12.6).clamp(0.0, 1.0);
 
         // calculate output
         helpers::set_pwm_duty(&mut pwm, c_t, Channel::Ch1);
@@ -314,76 +320,115 @@ async fn main(spawner: Spawner) {
     let angle_offset = (angle_cal_1 + angle_cal_2) / 2.0;
     info!("Angle Calibration value: {}", angle_offset);
 
-    // info!("Starting control loop!");
+    info!("Starting control loop!");
 
-    // loop {
-    //     // enable or disable channels
-    //     let enable = *ENABLE.lock().await;
-    //     if enable {
-    //         pwm.enable(Channel::Ch1);
-    //         pwm.enable(Channel::Ch2);
-    //         pwm.enable(Channel::Ch3);
-    //     } else {
-    //         info!("disabled...");
-    //         pwm.disable(Channel::Ch1);
-    //         pwm.disable(Channel::Ch2);
-    //         pwm.disable(Channel::Ch3);
-    //         Timer::after_millis(10).await;
-    //         continue;
-    //     }
+    helpers::set_pwm_duty(&mut pwm, 0.0, Channel::Ch1);
+    helpers::set_pwm_duty(&mut pwm, 0.0, Channel::Ch2);
+    helpers::set_pwm_duty(&mut pwm, 0.0, Channel::Ch3);
 
-    //     // trigger ADC conversion
-    //     adc_conv.set_high();
-    //     adc_conv.set_low();
+    let mut i_a_filter = DirectForm2Transposed::<f32>::new(coefficients);
+    let mut i_b_filter = DirectForm2Transposed::<f32>::new(coefficients);
+    let mut i_c_filter = DirectForm2Transposed::<f32>::new(coefficients);
 
-    //     // read sensor feedback
-    //     let feedback_data = adc.read().await.unwrap();
-    //     let new_time = Instant::now();
+    let mut pid_d = PIDController::new(INDUCTANCE * BANDWIDTH, RESISTANCE * BANDWIDTH, 0.0, None);
+    let mut pid_q = PIDController::new(INDUCTANCE * BANDWIDTH, RESISTANCE * BANDWIDTH, 0.0, None);
 
-    //     let mut alpha = (feedback_data[0] - 1.24) / 2.0;
-    //     let mut beta = (feedback_data[1] - 1.24) / 2.0;
+    loop {
+        let Some(throttle) = *THROTTLE.lock().await else {
+            // info!("disabled...");
+            pwm.disable(Channel::Ch1);
+            pwm.disable(Channel::Ch2);
+            pwm.disable(Channel::Ch3);
+            Timer::after_millis(10).await;
+            continue;
+        };
 
-    //     let mut i_a = (1.6336 - feedback_data[2]) / (10.0 * 2.5e-3);
-    //     let mut _i_b = (1.6372 - feedback_data[3]) / (10.0 * 2.5e-3);
-    //     let mut _i_c = (1.6395 - feedback_data[4]) / (10.0 * 2.5e-3);
+        pwm.enable(Channel::Ch1);
+        pwm.enable(Channel::Ch2);
+        pwm.enable(Channel::Ch3);
 
-    //     // apply filtering
-    //     alpha = alpha_filter.run(alpha);
-    //     beta = beta_filter.run(beta);
+        // trigger ADC conversion
+        adc_conv.set_high();
+        adc_conv.set_low();
 
-    //     i_a = i_a_filter.run(i_a);
-    //     _i_b = i_b_filter.run(_i_b);
-    //     _i_c = i_c_filter.run(_i_c);
+        // read sensor feedback
+        let feedback_data = adc.read().await.unwrap();
+        let new_time = Instant::now();
 
-    //     // calculate angle
-    //     let angle = f32::atan2(alpha, beta) * (180.0 / PI);
+        let mut alpha = (feedback_data[0] - 1.24) / 2.0;
+        let mut beta = (feedback_data[1] - 1.24) / 2.0;
 
-    //     // calculate time delta
-    //     let dt = new_time.duration_since(last_time).as_micros() as f32 * 1e-6;
+        let mut i_a = (feedback_data[2] - 1.6336) / (10.0 * 2.5e-3);
+        let mut i_b = (feedback_data[3] - 1.6372) / (10.0 * 2.5e-3);
+        let mut i_c = (feedback_data[4] - 1.6395) / (10.0 * 2.5e-3);
 
-    //     // calculate speed
-    //     let mut _speed = (angle - last_angle) / (dt * 360.0);
-    //     _speed = speed_filter.run(_speed);
+        // apply filtering
+        alpha = alpha_filter.run(alpha);
+        beta = beta_filter.run(beta);
 
-    //     let c_t = (pid.output(3.0, -i_a, dt) / 12.6).clamp(0.0, 1.0);
+        i_a = i_a_filter.run(i_a);
+        i_b = i_b_filter.run(i_b);
+        i_c = i_c_filter.run(i_c);
 
-    //     // info!("angle: {}", angle);
-    //     // info!("speed: {}", speed);
-    //     // info!("sample_rate: {} kHz", 1e-3 / dt);
-    //     info!("i_a: {}", -i_a * 1e3);
-    //     // info!("i_b: {} mA", i_b * 1e3);
-    //     // info!("i_c: {} mA", i_c * 1e3);
-    //     info!("c_t: {}", c_t);
+        // calculate angle
+        let physical_angle = f32::atan2(alpha, beta) * (180.0 / PI);
+        let electrical_angle = (angle_offset - physical_angle) * 2.0;
 
-    //     // calculate output
-    //     helpers::set_pwm_duty(&mut pwm, c_t, Channel::Ch1);
-    //     helpers::set_pwm_duty(&mut pwm, 0.0, Channel::Ch2);
-    //     helpers::set_pwm_duty(&mut pwm, 0.0, Channel::Ch3);
+        // back to radians :(
+        let angle_rads = electrical_angle * (PI / 180.0);
+        let sin = angle_rads.sin();
+        let cos = angle_rads.cos();
 
-    //     // update last values
-    //     last_time = new_time;
-    //     last_angle = angle;
-    // }
+        // calculate time delta
+        let dt = new_time.duration_since(last_time).as_micros() as f32 * 1e-6;
+
+        // calculate speed
+        // let mut _speed = (angle - last_angle) / (dt * 360.0);
+        // _speed = speed_filter.run(_speed);
+
+        // info!("angle: {}", angle);
+        // info!("speed: {}", speed);
+        // info!("sample_rate: {} kHz", 1e-3 / dt);
+        // info!("i_a: {}", -i_a * 1e3);
+        // info!("i_b: {} mA", i_b * 1e3);
+        // info!("i_c: {} mA", i_c * 1e3);
+
+        // Transform currents to stationary frame
+        let i_abc = Vector3::<f32>::new(i_a, i_b, i_c);
+        let i_xy = clarke_transform(i_abc);
+        let i_dq = park_transform(i_xy, sin, cos);
+
+        let i_d = i_dq[0];
+        let i_q = i_dq[1];
+
+        // Torque control
+        let v_d = pid_d.output(0.0, i_d, dt);
+        let v_q = pid_q.output(throttle * 5.0, i_q, dt); // 3A as 100 %
+
+        // Transform back to rotating frame
+        let v_dq = Vector2::<f32>::new(v_d, v_q);
+        let v_xyz = inverse_park_transform(v_dq, sin, cos);
+        let v_abc = inverse_clarke_transform(v_xyz);
+
+        let v_a = (v_abc[0] / 12.6).clamp(-1.0, 1.0);
+        let v_b = (v_abc[1] / 12.6).clamp(-1.0, 1.0);
+        let v_c = (v_abc[2] / 12.6).clamp(-1.0, 1.0);
+
+        // info!("throttle: {} angle: {}", throttle, electrical_angle);
+        // info!("i_a: {} i_b: {} i_c: {}", i_a, i_b, i_c);
+        // info!("i_d: {} i_q: {}", i_d, i_q);
+        // info!("v_a: {} v_b: {} v_c: {}", v_a, v_b, v_c);
+        // info!("v_d: {} v_q: {}", v_d, v_q);
+
+        // calculate output
+        helpers::set_pwm_duty(&mut pwm, (v_a + 1.0) / 2.0, Channel::Ch1);
+        helpers::set_pwm_duty(&mut pwm, (v_b + 1.0) / 2.0, Channel::Ch2);
+        helpers::set_pwm_duty(&mut pwm, (v_c + 1.0) / 2.0, Channel::Ch3);
+
+        // update last values
+        last_time = new_time;
+        // last_angle = angle;
+    }
 }
 
 #[task]
@@ -398,19 +443,23 @@ async fn radio_receive(sbus: UartRx<'static, peripherals::USART2, Async>) {
     loop {
         let data = sbus.get_packet().await.unwrap();
 
-        let new_enable = data.ch5() > 1200;
+        let enable = data.ch5() > 1200;
+        let throttle = ((data.ch2() as f32) - 1000.0) / 900.0;
 
         {
-            let mut enable = ENABLE.lock().await;
+            let mut mutex = THROTTLE.lock().await;
 
-            if *enable != new_enable {
-                if new_enable {
-                    info!("enabled!");
-                } else {
-                    info!("disabled...");
-                }
-                *enable = new_enable;
-            }
+            match (mutex.is_some(), enable) {
+                (false, false) | (true, true) => (),
+                (false, true) => info!("controller enabled!"),
+                (true, false) => info!("controller disabled..."),
+            };
+
+            if enable {
+                *mutex = Some(throttle)
+            } else {
+                *mutex = None
+            };
         }
 
         // info!(
@@ -449,7 +498,8 @@ async fn nfault_handler(
     mut drv_enable: Output<'static>,
 ) {
     n_fault.wait_for_low().await;
-    *ENABLE.lock().await = false;
+
+    *THROTTLE.lock().await = None;
     error!("DRV Error!");
     report_status(&mut drv).await.unwrap();
     drv_enable.set_low();

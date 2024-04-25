@@ -95,10 +95,11 @@ pub async fn setup_driver(drv: &mut Drv<'_>) -> Result<(), Error> {
 
     let ocp_control = OcpControl::new()
         .with_t_retry(TRetry::_4ms)
-        .with_dead_time(DeadTime::_100)
+        .with_dead_time(DeadTime::_200)
         .with_ocp_mode(OcpMode::Latched)
-        .with_ocp_deg(DeglitchTime::_4)
-        .with_vds_lvl(VdsLevel::_0_13);
+        .with_ocp_deg(DeglitchTime::_8)
+        .with_vds_lvl(VdsLevel::_0_53);
+    // .with_vds_lvl(VdsLevel::_0_13); // random errors happen with this
 
     drv.write(ocp_control).await?;
 

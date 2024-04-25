@@ -1,11 +1,11 @@
 //! Field-oriented control functions
 use micromath::F32Ext;
-use nalgebra as na;
+pub use nalgebra::{Matrix2, Matrix2x3, Matrix3x2, Vector2, Vector3};
 
 /// Apply clarke transform to input signal
-pub fn clarke_transform(input_signal: na::SVector<f32, 3>) -> na::SVector<f32, 2> {
+pub fn clarke_transform(input_signal: Vector3<f32>) -> Vector2<f32> {
     2f32 / 3f32
-        * na::SMatrix::<f32, 2, 3>::new(
+        * Matrix2x3::<f32>::new(
             // Defining Park matrix
             1f32,
             -0.5f32,
@@ -18,8 +18,8 @@ pub fn clarke_transform(input_signal: na::SVector<f32, 3>) -> na::SVector<f32, 2
 }
 
 /// Apply inverse clarke transform to input signal
-pub fn inverse_clarke_transform(input_signal: na::SVector<f32, 2>) -> na::SVector<f32, 3> {
-    na::SMatrix::<f32, 3, 2>::new(
+pub fn inverse_clarke_transform(input_signal: Vector2<f32>) -> Vector3<f32> {
+    Matrix3x2::<f32>::new(
         1f32,
         0f32,
         -0.5f32,
@@ -30,12 +30,8 @@ pub fn inverse_clarke_transform(input_signal: na::SVector<f32, 2>) -> na::SVecto
 }
 
 /// Apply park transform to input signal
-pub fn park_transform(
-    input_signal: na::SVector<f32, 2>,
-    angle_sin: f32,
-    angle_cos: f32,
-) -> na::SVector<f32, 2> {
-    na::SMatrix::<f32, 2, 2>::new(
+pub fn park_transform(input_signal: Vector2<f32>, angle_sin: f32, angle_cos: f32) -> Vector2<f32> {
+    Matrix2::<f32>::new(
         // Defining clarke matrix
         angle_cos, angle_sin, -angle_sin, angle_cos,
     ) * input_signal
@@ -43,11 +39,11 @@ pub fn park_transform(
 
 /// Apply inverse park transform to input signal
 pub fn inverse_park_transform(
-    input_signal: na::SVector<f32, 2>,
+    input_signal: Vector2<f32>,
     angle_sin: f32,
     angle_cos: f32,
-) -> na::SVector<f32, 2> {
-    na::SMatrix::<f32, 2, 2>::new(angle_cos, -angle_sin, angle_sin, angle_cos) * input_signal
+) -> Vector2<f32> {
+    Matrix2::<f32>::new(angle_cos, -angle_sin, angle_sin, angle_cos) * input_signal
 }
 
 // /// Apply clarke and park transform to input signal

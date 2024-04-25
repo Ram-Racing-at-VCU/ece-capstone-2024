@@ -16,11 +16,14 @@ pub const F_C: i32 = 850;
 /// Angle filter sampling frequency in khz
 pub const F_S: i32 = 17;
 
-/// Speed filter window size
-pub const WINDOW_SIZE: usize = 31;
+// /// Speed filter window size
+// pub const WINDOW_SIZE: usize = 31;
 
 /// Motor Phase Resistance
-pub const RESISTANCE: f32 = 6.2832e-3;
+pub const RESISTANCE: f32 = 6.2832e-3 + 2.5e-3 + 0.85e-3;
 
 /// Motor Phase Inductance
 pub const INDUCTANCE: f32 = 2.56e-6;
+
+/// PI Controller Bandwidth
+pub const BANDWIDTH: f32 = 10000.0;

@@ -14,7 +14,7 @@ fn panic() -> ! {
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
-    let mut controller = PIDController::new(1., 1., 1., 0., 100_000.);
+    let mut controller = PIDController::new(1., 1., 1., None);
 
     let input_signal = [1f32; 1000];
 
@@ -23,7 +23,7 @@ fn main() -> ! {
     let mut output_signal = [0f32; 1000];
 
     for (i, input) in input_signal.iter().enumerate() {
-        output_signal[i] = controller.output(*input, measurement, 0.001).unwrap();
+        output_signal[i] = controller.output(*input, measurement, 0.001);
     }
 
     for i in output_signal {
