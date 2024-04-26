@@ -326,9 +326,9 @@ async fn main(spawner: Spawner) {
     helpers::set_pwm_duty(&mut pwm, 0.0, Channel::Ch2);
     helpers::set_pwm_duty(&mut pwm, 0.0, Channel::Ch3);
 
-    let mut i_a_filter = DirectForm2Transposed::<f32>::new(coefficients);
-    let mut i_b_filter = DirectForm2Transposed::<f32>::new(coefficients);
-    let mut i_c_filter = DirectForm2Transposed::<f32>::new(coefficients);
+    // let mut i_a_filter = DirectForm2Transposed::<f32>::new(coefficients);
+    // let mut i_b_filter = DirectForm2Transposed::<f32>::new(coefficients);
+    // let mut i_c_filter = DirectForm2Transposed::<f32>::new(coefficients);
 
     let mut pid_d = PIDController::new(INDUCTANCE * BANDWIDTH, RESISTANCE * BANDWIDTH, 0.0, None);
     let mut pid_q = PIDController::new(INDUCTANCE * BANDWIDTH, RESISTANCE * BANDWIDTH, 0.0, None);
@@ -358,17 +358,17 @@ async fn main(spawner: Spawner) {
         let mut alpha = (feedback_data[0] - 1.24) / 2.0;
         let mut beta = (feedback_data[1] - 1.24) / 2.0;
 
-        let mut i_a = (feedback_data[2] - 1.6336) / (10.0 * 2.5e-3);
-        let mut i_b = (feedback_data[3] - 1.6372) / (10.0 * 2.5e-3);
-        let mut i_c = (feedback_data[4] - 1.6395) / (10.0 * 2.5e-3);
+        let i_a = (feedback_data[2] - 1.6336) / (10.0 * 2.5e-3);
+        let i_b = (feedback_data[3] - 1.6372) / (10.0 * 2.5e-3);
+        let i_c = (feedback_data[4] - 1.6395) / (10.0 * 2.5e-3);
 
         // apply filtering
         alpha = alpha_filter.run(alpha);
         beta = beta_filter.run(beta);
 
-        i_a = i_a_filter.run(i_a);
-        i_b = i_b_filter.run(i_b);
-        i_c = i_c_filter.run(i_c);
+        // i_a = i_a_filter.run(i_a);
+        // i_b = i_b_filter.run(i_b);
+        // i_c = i_c_filter.run(i_c);
 
         // calculate angle
         let physical_angle = f32::atan2(alpha, beta) * (180.0 / PI);
@@ -403,7 +403,7 @@ async fn main(spawner: Spawner) {
 
         // Torque control
         let v_d = pid_d.output(0.0, i_d, dt);
-        let v_q = pid_q.output(throttle * 5.0, i_q, dt); // 3A as 100 %
+        let v_q = pid_q.output(throttle * 16.95, i_q, dt); // 3A as 100 %
 
         // Transform back to rotating frame
         let v_dq = Vector2::<f32>::new(v_d, v_q);
