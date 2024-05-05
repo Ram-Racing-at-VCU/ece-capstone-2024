@@ -70,6 +70,11 @@ static SPI_BUS: OnceLock<Mutex<CriticalSectionRawMutex, Spi<'static, peripherals
 static THROTTLE: Mutex<CriticalSectionRawMutex, Option<f32>> = Mutex::new(None);
 
 #[embassy_executor::main]
+
+// bind USART interrupt
+// embassy_stm32::bind_interrupts!(struct Irqs {
+//     USART2 => usart::InterruptHandler<peripherals::USART2>;
+// });
 async fn main(spawner: Spawner) {
     let mut config = Config::default();
 

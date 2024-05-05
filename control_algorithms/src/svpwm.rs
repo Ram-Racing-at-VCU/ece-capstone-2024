@@ -11,11 +11,11 @@ pub fn svpwm(v_alpha: f32, v_beta: f32, angle: f32, v_dc: f32, ts: f32) -> (f32,
     }
     let modulation_index: f32 = v_reference / v_dc;
 
-    let sector: usize = match angle {
+    let sector = match angle {
         angle if 0. < angle && angle <= PI / 3. => 1,
         angle if PI / 3. < angle && angle <= 2. * PI / 3. => 2,
         angle if 2. * PI / 3. < angle && angle <= PI => 3,
-        angle if (PI..=4. * PI / 3.).contains(&angle) => 4,
+        angle if PI < angle && angle <= 4. * PI / 3. => 4,
         angle if 4. * PI / 3. < angle && angle <= 5. * PI / 3. => 5,
         angle if 5. * PI / 3. < angle && angle <= 2. * PI => 6,
         _ => {
