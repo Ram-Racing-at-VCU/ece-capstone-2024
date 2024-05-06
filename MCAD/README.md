@@ -1,1 +1,1 @@
-
+I recommend downloading both Motor Encoder Mods and PCB Mounting directories that way you have access to everything. There are Solidworks assemblies (.SLDASM) in the PCB Mounting directory that use parts from the Motor Encoder Mods directory.
